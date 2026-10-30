@@ -1,0 +1,30 @@
+{
+  "id": "cameo-thunder-wash-100-rgb",
+  "manufacturer": "Cameo",
+  "model": "Thunder Wash 100 RGB",
+  "fixture_type": "led_bar",
+  "source": "3Ch3 layout (ch1 red, ch2 green, ch3 blue) and 6-channel mode (master dimmer, strobe 128-250 = 0-30 Hz; 11-127 are random pulse/ramp/break effects and are never used, red, green, blue, sound control) from docs/manuals/manual-cameo-thunder-wash-100-rgb.pdf pages 26 and 28; the user chose the 6Ch mode. Other modes intentionally omitted.",
+  "modes": [
+    {
+      "name": "3Ch3",
+      "channel_count": 3,
+      "channels": [
+        {"attribute": "red"},
+        {"attribute": "green"},
+        {"attribute": "blue"}
+      ]
+    },
+    {
+      "name": "6Ch",
+      "channel_count": 6,
+      "channels": [
+        {"attribute": "intensity"},
+        {"attribute": "strobe", "active_min": 128, "active_max": 250, "min_hz": 0, "max_hz": 30},
+        {"attribute": "red"},
+        {"attribute": "green"},
+        {"attribute": "blue"},
+        {"fixed_dmx": 0, "label": "Sound control (0-5 = off)"}
+      ]
+    }
+  ]
+}

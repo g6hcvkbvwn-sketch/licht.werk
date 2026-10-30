@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+node_modules/
+logs/
+.DS_Store
+
+# Local machine launch shortcuts and third-party manuals (not redistributed)
+/launch commands.md
+/docs/manuals/*.pdf
+
+# Scene save backups and interrupted atomic writes
+config/*.bak
+config/.*.tmp

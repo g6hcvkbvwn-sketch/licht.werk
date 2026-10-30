@@ -1,0 +1,24 @@
+{
+  "id": "cameo-q-spot-15-rgbw-bk",
+  "manufacturer": "Cameo",
+  "model": "Q-Spot 15 RGBW BK",
+  "fixture_type": "spot",
+  "source": "9CH mode (dimmer, dimmer fine, multifunction strobe, RGBW, colour macro, colour temperature) from docs/manuals/manual-cameo-q-spot-15-rgbw-bk.pdf page 37; the user chose the 9CH mode. Strobe 128-250 = slow (<1 Hz) to fast (20 Hz); 0-5 open. min_hz 0.5 stands in for the manual's '<1 Hz'. Other modes intentionally omitted.",
+  "modes": [
+    {
+      "name": "9CH",
+      "channel_count": 9,
+      "channels": [
+        {"attribute": "intensity"},
+        {"fixed_dmx": 0, "label": "Dimmer fine (0 = off)"},
+        {"attribute": "strobe", "active_min": 128, "active_max": 250, "min_hz": 0.5, "max_hz": 20},
+        {"attribute": "red"},
+        {"attribute": "green"},
+        {"attribute": "blue"},
+        {"attribute": "white"},
+        {"fixed_dmx": 0, "label": "Colour macro (0-5 = off, overrides RGBW)"},
+        {"fixed_dmx": 0, "label": "Colour temperature correction (0-5 = off)"}
+      ]
+    }
+  ]
+}

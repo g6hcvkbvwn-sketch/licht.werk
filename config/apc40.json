@@ -1,0 +1,26 @@
+{
+  "pads": [
+    {
+      "pad": 0,
+      "scene": "all-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 1,
+      "scene": "test-scene-fast",
+      "colour": "cyan"
+    },
+    {
+      "pad": 2,
+      "scene": "red-green",
+      "colour": "green"
+    }
+  ],
+  "sequence_pads": [
+    {
+      "pad": 4,
+      "sequence": "test",
+      "colour": "green"
+    }
+  ]
+}

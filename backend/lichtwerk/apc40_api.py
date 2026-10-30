@@ -1,0 +1,405 @@
+"""HTTP routes for the on-screen APC40 MKII: full view, virtual events, scene-pad assignment
+and the typed effect tempo (BPM)."""
+
+from typing import Callable, Literal, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, ConfigDict, Field
+
+from . import apc40 as hw
+from .apc40_control import Apc40Control
+from .apc40_pads import PadAssignment, SequencePadAssignment
+from .effects import EFFECT_LABELS, EFFECT_TYPES
+from .midi_control import MidiEvent
+from .room_map import light_colour
+from .scenes import PersistenceError
+from .service import LightingService
+from .tempo import validate_bpm
+
+
+class StripView(BaseModel):
+    track: int
+    target: Optional[str]
+    label: str
+    available: bool  # has a fixture/group in the patch
+    group: bool
+    family: Optional[str]
+    active: bool
+    intensity: Optional[float]
+    saturation: Optional[float]
+    strobe_on: bool
+    flash_held: bool
+    selected: bool
+    selectable: bool
+    # Current colour of each of the strip's fixtures (RGB 0-1, the state being edited, intensity
+    # ignored); None = fixture has no colour. Empty for strips without fixtures.
+    colours: list[Optional[list[float]]]
+    fixture_names: list[str]
+    colour_set: bool  # CLIP STOP LED on: a colour was chosen with the pads/knobs
+    fx_knobs: bool  # the device knobs edit this track's effect (TRACK SELECT blinks)
+    fx_running: bool  # an effect of this track is running (TRACK SELECT on)
+    position_selected: bool
+    hazer: bool
+    ring_available: bool
+    ring_selected: bool
+    ring_colours: list[list[float]]
+
+
+class PadView(BaseModel):
+    pad: int
+    note: int
+    colour: Optional[str]  # hex RGB of the pad LED, None = dark
+    label: Optional[str] = None
+    scene: Optional[str] = None
+    sequence: Optional[str] = None
+    scene_colour: Optional[str] = None
+    missing: bool = False  # assigned scene no longer exists
+    active: bool = False
+    kind: Optional[str] = None
+    included: bool = False
+    excluded: bool = False
+    explicitly_excluded: bool = False
+    fixture_badges: list[str] = Field(default_factory=list)
+
+
+class KnobView(BaseModel):
+    knob: int
+    function: Optional[str]
+    label: Optional[str]
+    value: Optional[float]
+    display: Optional[str] = None
+
+
+class EffectTypeView(BaseModel):
+    index: int  # SCENE LAUNCH 1-5
+    type: str
+    label: str
+    colour: str  # hex of the bright pad colour
+    selected: bool  # shown on the pads (effects page open)
+    available: bool  # some strip can use this type
+    running: bool  # some strip runs an effect of this type (SCENE LAUNCH blinks)
+
+
+class EventView(BaseModel):
+    kind: str
+    channel: int
+    number: int
+    value: int
+
+
+class ShowDialogView(BaseModel):
+    id: int
+    kind: Optional[Literal["scene", "sequence"]]
+    item: Optional[str]
+    pad: int
+
+
+class Apc40View(BaseModel):
+    connected: bool
+    device: Optional[str]
+    other_connected: bool  # the Xone:K2 is connected (for choosing the screen)
+    strips: list[StripView]
+    master: float
+    blackout: bool
+    preview: bool
+    strobe_hz: float
+    selected: Optional[int]
+    pad_mode: Literal["scenes", "sequences", "colours", "effects", "positions"]
+    fx_track: Optional[int]
+    effect_types: list[EffectTypeView]
+    bpm: Optional[float]  # None = effects not available
+    beat_phase: Optional[float]
+    position_track: Optional[int]
+    position_mode: Literal["aim", "permissions"]
+    shift: bool
+    error: Optional[str]
+    fx_notice: Optional[str]
+    position_dialog_id: int
+    position_dialog_kind: Optional[Literal["target", "zone"]]
+    position_dialog_item: Optional[str]
+    show_dialog: ShowDialogView
+    pads: list[PadView]
+    knobs: list[KnobView]
+    scene_colours: dict[str, str]
+    last_event: Optional[EventView]
+
+
+class Apc40Event(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    kind: Literal["note", "cc"]
+    channel: int = Field(ge=1, le=16)
+    number: int = Field(ge=0, le=127)
+    value: int = Field(ge=0, le=127)
+
+
+class TempoRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    bpm: float
+
+
+class PadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    scene: str = Field(min_length=1)
+    colour: str = hw.DEFAULT_SCENE_PAD_COLOUR
+
+
+class SequencePadRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    sequence: str = Field(min_length=1)
+    colour: str = hw.DEFAULT_SCENE_PAD_COLOUR
+
+
+def build_router(
+    control: Apc40Control,
+    service: LightingService,
+    status: Callable[[], dict],
+) -> APIRouter:
+    """`status` returns {"connected", "device", "other_connected"} for the two controllers."""
+    router = APIRouter(prefix="/api/apc40")
+
+    def fixture_colour(fixture_id: str) -> Optional[list[float]]:
+        values = {k: v for k, v in control.controller.state(fixture_id).items() if k != "intensity"}
+        colour = light_colour(values) if {"red", "green", "blue"} <= values.keys() else None
+        return list(colour) if colour else None
+
+    def view() -> Apc40View:
+        selected = control.selected()
+        fx_open = control.fx_open()
+        fx_track = control.fx_track()
+        fx_type = control.fx_type()
+        position_track = control.position_track()
+        scenes = {s.id: s.name for s in control.scenes.store.all()}
+        active_scene = control.scenes.active_scene()
+        strips = []
+        for strip in control.strips:
+            fixtures = control.fixtures(strip.track)
+            active = control.is_active(strip.track)
+            strips.append(StripView(
+                track=strip.track, target=strip.target, label=control.label(strip.track), available=bool(fixtures),
+                group=strip.group, family=strip.family, active=active,
+                intensity=control.fader(strip.track),
+                saturation=control.saturation(strip.track),
+                strobe_on=control.strobe_on(strip.track),
+                flash_held=control.flash_held(strip.track),
+                selected=selected == strip.track,
+                selectable=active and (control.ring_selected(strip.track) or bool(control.knob_functions(strip.track))),
+                colours=[fixture_colour(f.patch.id) for f in fixtures],
+                fixture_names=[f.patch.name for f in fixtures],
+                colour_set=control.colour_set(strip.track),
+                fx_knobs=fx_open and fx_track == strip.track,
+                fx_running=control.effect_running(strip.track),
+                position_selected=position_track == strip.track,
+                hazer=strip.track == 8,
+                ring_available=control.ring_available(strip.track),
+                ring_selected=control.ring_selected(strip.track),
+                ring_colours=control.ring_colours(strip.track) if control.ring_available(strip.track) else [],
+            ))
+        colours = control.pad_colours(blink_on=True)
+        pads = []
+        for pad in range(hw.PAD_COUNT):
+            velocity = colours.get(pad, 0)
+            entry = PadView(
+                pad=pad, note=hw.pad_note(pad),
+                colour=hw.PALETTE[velocity] if velocity else None,
+            )
+            if position_track is not None:
+                position = control.position_pads().get(pad)
+                if position is not None:
+                    entry.label, entry.kind, entry.active, entry.excluded = position
+                    entry.included = entry.kind == "zone" and not entry.excluded
+                    if pad >= 24 and entry.kind == "zone":
+                        zone = control.positions.rig.room_file().zones[pad - 24]
+                        entry.explicitly_excluded = zone.id in control.position_assignment(position_track).exclude_zones
+            elif fx_open and selected is None:
+                row, column = divmod(pad, hw.PAD_COLUMNS)
+                if velocity:
+                    entry.label = control.effect_definition(column + 1, fx_type, row).name
+                    running = control.running_effect(column + 1, fx_type)
+                    entry.active = running is not None and running.preset == row
+            elif selected is None and control.show_page() == "sequences":
+                assignment = control.pads.get_sequence(pad)
+                if assignment is not None:
+                    entry.sequence = assignment.sequence
+                    entry.scene_colour = assignment.colour
+                    sequences = control.scenes.sequences
+                    known = {s.id: s for s in sequences.store.all()} if sequences is not None else {}
+                    entry.missing = assignment.sequence not in known
+                    entry.label = known[assignment.sequence].name if not entry.missing else f"{assignment.sequence} (missing)"
+                    playback = sequences.status() if sequences is not None else None
+                    entry.active = bool(
+                        playback and playback["id"] == assignment.sequence
+                        and playback["status"] in ("running", "paused")
+                    )
+            elif selected is None:
+                assignment = control.pads.get(pad)
+                if assignment is not None:
+                    entry.scene = assignment.scene
+                    entry.scene_colour = assignment.colour
+                    entry.missing = assignment.scene not in scenes
+                    entry.label = scenes.get(assignment.scene, f"{assignment.scene} (missing)")
+                    entry.active = assignment.scene == active_scene
+                    if not entry.missing:
+                        scene = control.scenes.store.get(assignment.scene)
+                        entry.fixture_badges = [
+                            f"{control.controller.patch.group_name(group)} G" for group in scene.groups
+                        ] + [
+                            control.controller.patch.get(fixture).patch.name
+                            for fixture in dict.fromkeys([*scene.fixtures, *scene.positions])
+                        ]
+            elif selected is not None and control.ring_selected(selected):
+                entry.label, entry.active = control.ring_pad(selected, pad)
+                if pad < 8 and entry.label is not None:
+                    entry.kind = "ring_section"
+                    if pad > 0:
+                        section_colours = control.ring_colours(selected)
+                        rgb = section_colours[pad - 1]
+                        entry.colour = "".join(f"{round(c * 255):02X}" for c in rgb)
+            elif pad == hw.WHITE_PAD:
+                entry.label = "White"
+            pads.append(entry)
+        device = control.device_knobs()
+        knobs = []
+        for knob in (1, 2, 5, 6):
+            function, label, value = device.get(knob, (None, None, None))
+            display = None
+            if fx_open and function == "speed" and fx_track is not None:
+                running = control.running_effect(fx_track, fx_type)
+                if running is not None:
+                    duration = (running.params.travel if running.params.target_ids
+                                else running.params.seconds if running.params.timing == "seconds"
+                                else running.params.beats)
+                    suffix = "travel" if running.params.target_ids else "cycle"
+                    if running.params.timing == "seconds":
+                        display = f"{duration:g} seconds/{suffix}"
+                    else:
+                        display = f"{duration:g} beats/{suffix}" if duration >= 1 else f"1/{1 / duration:g} beat/{suffix}"
+            knobs.append(KnobView(knob=knob, function=function, label=label, value=value, display=display))
+        launch = control.scene_launch_colours()
+        effect_types = [
+            EffectTypeView(
+                index=index + 1, type=effect_type.value, label=EFFECT_LABELS[effect_type],
+                colour=hw.PALETTE[hw.EFFECT_COLOURS[effect_type.value][0]],
+                selected=fx_open and effect_type is fx_type, available=launch[index] > 0,
+                running=control.type_running(effect_type),
+            )
+            for index, effect_type in enumerate(EFFECT_TYPES)
+        ]
+        event = control.last_event()
+        state = status()
+        return Apc40View(
+            connected=state.get("connected", False),
+            device=state.get("device"),
+            other_connected=state.get("other_connected", False),
+            strips=strips,
+            master=control.master(),
+            blackout=service.blackout_active(),
+            preview=control.preview_active(),
+            strobe_hz=control.strobe_hz(),
+            selected=selected,
+            pad_mode=(
+                "positions" if position_track is not None
+                else "colours" if selected is not None
+                else "effects" if fx_open
+                else control.show_page()
+            ),
+            fx_track=fx_track,
+            effect_types=effect_types,
+            bpm=control.bpm(),
+            beat_phase=control.beat_phase(),
+            position_track=position_track,
+            position_mode=control.position_mode(),
+            shift=control.shift_active(),
+            error=control.last_error(),
+            fx_notice=control.effects.notice if control.effects is not None else None,
+            position_dialog_id=control.position_dialog_request()[0],
+            position_dialog_kind=control.position_dialog_request()[1],
+            position_dialog_item=control.position_dialog_item(),
+            show_dialog=ShowDialogView(**dict(zip(
+                ("id", "kind", "item", "pad"), control.show_dialog_request(),
+            ))),
+            pads=pads,
+            knobs=knobs,
+            scene_colours={name: hw.PALETTE[v] for name, v in hw.SCENE_PAD_COLOURS.items()},
+            last_event=EventView(**event.__dict__) if event else None,
+        )
+
+    @router.get("", response_model=Apc40View)
+    def get_view() -> Apc40View:
+        return view()
+
+    @router.post("/event", response_model=Apc40View)
+    def send_event(event: Apc40Event) -> Apc40View:
+        control.handle(MidiEvent(event.kind, event.channel, event.number, event.value), virtual=True)
+        return view()
+
+    @router.put("/tempo", response_model=Apc40View)
+    def set_tempo(request: TempoRequest) -> Apc40View:
+        if control.effects is None:
+            raise HTTPException(status_code=409, detail="Effects are not available.")
+        try:
+            control.effects.tempo.set_bpm(validate_bpm(request.bpm))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return view()
+
+    @router.put("/pads/{pad}", response_model=Apc40View)
+    def assign_pad(pad: int, request: PadRequest) -> Apc40View:
+        if not 0 <= pad < hw.PAD_COUNT:
+            raise HTTPException(status_code=404, detail=f"Pad {pad} does not exist.")
+        try:
+            control.scenes.store.get(request.scene)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Scene '{request.scene}' does not exist.")
+        try:
+            assignment = PadAssignment(pad=pad, scene=request.scene, colour=request.colour)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        try:
+            control.pads.assign(assignment)
+        except PersistenceError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+        return view()
+
+    @router.delete("/pads/{pad}", response_model=Apc40View)
+    def clear_pad(pad: int) -> Apc40View:
+        if not 0 <= pad < hw.PAD_COUNT:
+            raise HTTPException(status_code=404, detail=f"Pad {pad} does not exist.")
+        try:
+            control.pads.clear(pad)
+        except PersistenceError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+        return view()
+
+    @router.put("/sequence-pads/{pad}", response_model=Apc40View)
+    def assign_sequence_pad(pad: int, request: SequencePadRequest) -> Apc40View:
+        if not 0 <= pad < hw.PAD_COUNT:
+            raise HTTPException(404, f"Pad {pad} does not exist.")
+        if control.scenes.sequences is None:
+            raise HTTPException(409, "Sequences are not available.")
+        try:
+            control.scenes.sequences.store.get(request.sequence)
+            control.pads.assign_sequence(SequencePadAssignment(
+                pad=pad, sequence=request.sequence, colour=request.colour,
+            ))
+        except KeyError as error:
+            raise HTTPException(404, str(error.args[0])) from error
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from error
+        except PersistenceError as error:
+            raise HTTPException(503, str(error)) from error
+        return view()
+
+    @router.delete("/sequence-pads/{pad}", response_model=Apc40View)
+    def clear_sequence_pad(pad: int) -> Apc40View:
+        if not 0 <= pad < hw.PAD_COUNT:
+            raise HTTPException(404, f"Pad {pad} does not exist.")
+        try:
+            control.pads.clear_sequence(pad)
+        except PersistenceError as error:
+            raise HTTPException(503, str(error)) from error
+        return view()
+
+    return router

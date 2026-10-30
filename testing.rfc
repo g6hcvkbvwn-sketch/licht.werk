@@ -1,0 +1,389 @@
+# Club acceptance test - scenes, sequences and positioning
+
+Run this checklist once in order. Later tests reuse earlier scenes rather than
+repeating setup. Record PASS/FAIL beside each section and describe any difference.
+Do not delete or overwrite your existing show scenes or room definitions.
+
+## 0. Prepare safely
+
+1. Allow enough time with no audience. Tell anyone present that heads may move.
+2. Verify LichtWerk's configured output is universe 5 only. Lighting fixtures occupy
+   addresses 1-98; haze pump/fan are addresses 99/100. Resolume's universes are not
+   part of this test.
+3. Before starting the backend, check the physical heads' paths are clear. On startup,
+   BLACKOUT must be active, heads must use their saved rest, pump/fan must be zero,
+   and no sequence may start.
+4. Open the Controller page and connect APC40 MKII. Leave the browser open for all
+   hardware-created dialogs. Confirm the page identifies REAL OUTPUT only when the
+   configured adapter is healthy. Do not retry output if its universe is uncertain.
+5. Keep blackout active for authoring and permission tests. Haze is independent of
+   blackout/master: leave haze zero and skip the optional haze section if unsuitable.
+6. Confirm room calibration is valid and all temporary safety overrides are OFF.
+   Never enable an override to make a failed test pass.
+
+## 1. Position permissions versus aim (APC40 and screen)
+
+Use the moving-head group. Write down its current included/excluded zones so they
+can be restored at the end. Use two known, reachable zones, here called X and Y.
+
+1. Hold SHIFT and press the group's TRACK SELECT (track 2); release SHIFT.
+   The positioning menu must open in AIM mode.
+2. Press DOWN (or PERMISSIONS on screen). Without starting Move FX, note both heads'
+   current position and press X repeatedly. It must cycle:
+   not included -> included -> explicitly excluded -> not included.
+   Skip forward to not included first if X began in another state.
+   No press may move either head. Screen text/markers must match the hardware:
+   dim neutral = not included; cyan = included; red = explicitly excluded.
+3. Include X and Y, one press each from not included. Both must remain included.
+4. Press UP (AIM). Press X, then Y. Each deliberate aim moves the heads to that
+   zone's centre; permissions must remain X and Y, not only the most recent zone.
+5. Return to PERMISSIONS and explicitly exclude X. Return to AIM and aim at X.
+   The heads may travel there, but the beam must remain dark while excluded.
+   Re-include X in PERMISSIONS: the heads must not jump to its centre.
+6. Close and reopen the menu using SHIFT + TRACK SELECT. It must default to AIM,
+   regardless of the previous mode.
+7. SHIFT + an existing target pad, then an existing zone pad: each must open that
+   exact entry for editing, not recall it or alter permissions. Cancel both.
+   Press an empty target pad, then an empty zone pad: the correct Add dialog opens.
+   Cancel; no definitions or assignments should have changed.
+8. With X and Y included, open Move from SCENE LAUNCH 3 and launch its first Circle preset.
+   Both included zone pads must be fully lit; the tour must visit both.
+   Stop it using TRACK SELECT to choose the strip and STOP ALL CLIPS.
+   This button must still stop FX, not a scene sequence.
+
+## 2. Create reusable selective scenes
+
+Use names prefixed TEST so cleanup is unambiguous. Choose unused scene pads.
+
+1. Select the DJ-spots group and set a low intensity and red colour. Press an empty
+   scene pad: the scene editor must open. Save TEST Spots Red containing ONLY the
+   DJ spots and their intensity/main colour. Exclude heads, LED bar and haze.
+2. Prepare TEST Heads X: heads group, low intensity/main colour and named zone X,
+   with X and Y included and no extra exclusions. Save on another empty pad.
+3. Prepare TEST Heads Y: the same group/attributes, but zone Y and another colour.
+   Explicitly select Seconds and set an incoming fade of 2 seconds (new scenes
+   default to beats). Save on a third pad.
+4. Prepare TEST Split: head 1 -> X and head 2 -> Y as individual positioning entries.
+   Do not substitute the group entry. Save on another pad.
+5. SHIFT + TEST Heads Y: its saved values must appear without recalling the scene.
+   Change its name, save, and verify it remains on the same pad with the same ID.
+6. If capturing from preview, confirm the editor explicitly identifies Preview as
+   the source. Captured values must exclude master/blackout/FLASH/FX modulation.
+7. Return to live. Release blackout only after checking directions and low levels.
+   Recall TEST Heads X then TEST Spots Red: heads must keep their state.
+   Recall TEST Split: head 1 aims at X and head 2 at Y.
+8. Press TEST Split again: it must recall again, never switch other lights off.
+   Fixture badges/details must identify the affected fixtures unambiguously.
+9. Change the positioning menu's prior zone selections, then recall TEST Heads X.
+   Its saved permissions must replace the prior selection and feedback must agree.
+   No transition may illuminate forbidden travel or exceed mechanical limits.
+
+## 3. Manual adjustment and authoring clarity
+
+1. Recall TEST Heads X. Try manually changing a head's scene-controlled colour.
+   Use APC40 group COLOR pads/saturation and its intensity fader; repeat one change
+   on screen. Both must work immediately without Release. Saved scene values must
+   remain unchanged. Recall again to restore the saved look deliberately.
+2. On screen, edit TEST Split using controller-order columns. Set colour at head
+   GROUP level and intensity separately for head 1 and head 2. The same parameter
+   must not simultaneously be set at group and individual levels without an
+   explicit resolution. Verify different individual intensities survive Save/recall.
+3. Enter intensity 101% or an invalid name/number. The field must explain the problem
+   immediately and Save must not accept it. Correct to 25%: the recalled level and
+   on-screen fader must agree. Units must be visible, not unexplained 0-1 values.
+4. Choose a zone aim in the scene editor: that zone must automatically be permitted.
+   Other permissions should stay collapsed under Include other zones. Expand only
+   when testing additional Move FX areas; no zone-spot u/v fields should be shown.
+5. For an existing saved non-centre zone spot, open/save without changing its zone:
+   its existing position must survive, even though its spot fields are hidden.
+6. Recall a scene; edit one saved value without Apply now. Output must not change.
+   Use Apply now explicitly: the edited scene must then be recalled.
+7. Briefly test master, blackout and FLASH. They must retain their normal priority
+   and must not rewrite the saved scene. Stop any FX before continuing.
+
+## 4. Seconds sequence and independent static scene
+
+1. Open SEQUENCES using RIGHT. Create TEST Tour from an empty pad.
+   Add TEST Heads X then TEST Heads Y. Set timing mode Seconds, Loop, fade inherited,
+   and 3 seconds hold AFTER each fade.
+2. Duplicate a step, reorder with up/down, then remove the duplicate. Confirm the
+   resulting order is X, Y and the source scenes' fades were not changed.
+3. Start TEST Tour. A step with a 2-second fade and 3-second hold must occupy about
+   5 seconds, not 3. Observe at least two complete loops, including Y -> X.
+   While it runs, manually change a controlled intensity. The change must work;
+   the next step may write its saved intensity again.
+4. Press its running pad: pause. Heads and step/fade/hold progress must freeze.
+   Press again: resume from that phase, not step 1.
+5. While a fade is running, press RECORD (sequence Stop). Values must freeze,
+   without blackout or rolling back. Start again, then SHIFT + PLAY: restart at X.
+6. Recall TEST Spots Red while TEST Tour runs. The sequence must continue, since
+   DJ spots do not overlap its controlled attributes.
+7. Recall TEST Heads X manually. The overlapping sequence must stop before recall.
+8. Start TEST Tour again, switch to colour/FX/position pages: playback status must
+   remain visible. Left/right navigation changes pages only, not playback.
+9. Edit TEST Heads Y while TEST Tour runs. The current run must keep its snapshot;
+   a restart/new launch must use the changed definition. Apply now is deliberate.
+10. Change TEST Tour to One-shot and start. After its final fade/hold it must finish,
+    retaining final values and never looping or blacking out automatically.
+11. In the sequence editor, set Live controls -> Moving heads -> Main colour.
+    Before starting, pick blue on the APC40 heads-group COLOR page. Start TEST Tour:
+    it must keep blue through both X/Y positions despite their saved colours.
+    Pick red during playback: both heads must keep red across subsequent steps.
+    Stop using RECORD, then recall TEST Heads Y directly: its own saved colour
+    must apply, proving the sequence's Live setting did not leak into direct scenes.
+12. After Stop, move the group intensity/colour controls immediately. No Release
+    action must be needed. Unrelated static-scene fades must not be cancelled by Stop.
+
+## 5. Beat sequence and Speed label
+
+1. Create a temporary scene: its fade unit must initially be Beats, with Cut and
+   1/2, 1, 2, 4, 8, 16, 32 choices. A new sequence must default to Beats too.
+   Set a standalone 4-beat fade; change BPM halfway through: it must preserve
+   progress and finish at the new speed. Existing 2-second scenes must remain seconds.
+   Then edit TEST Tour to Beats. Choose the supported beat durations; verify choices are
+   1/2, 1, 2, 4, 8, 16, 32. Set a short hold and an inherited nonzero scene fade.
+2. At 120 BPM, a 2-second inherited fade must convert upward to 4 beats.
+   A zero fade must stay a cut. Inherited durations above 32 beats must clamp to 32.
+3. Start in Loop mode. Change BPM during a fade and during a hold: progress must
+   continue smoothly in beats at the new speed, without restarting the current step.
+4. Pause, change BPM, resume: no missed-step burst or phase reset.
+5. Open Move (SCENE LAUNCH 3) and select its strip. The knob must show Rate at the
+   normal label size and beats/cycle as the smaller text below, without overflow.
+   Changing BPM still affects both beat sequences and FX.
+
+## 5a. Family FX presets and creative controls
+
+Use LED bar track 1 for dimmer/colour tests first. Keep haze zero. For heads use
+track 2 (group), measured/calibrated heads and the included test areas from section 1.
+These checks use universe 5: bar 1-6, heads 7-80, spots 81-98; no haze commands.
+Do not treat lighting blackout as preventing head movement.
+
+1. On APC40 press SCENE LAUNCH 1, 2, 3: screen must show Dimmer, Colour, Move.
+   Buttons 4/5 must do nothing and remain dark. Each family has five rows of
+   presets aligned with their track columns; standby/incompatible fixture columns
+   remain dark. Only family buttons belong in the SCENE LAUNCH column: its unused
+   fourth/fifth cells must never contain FX presets. Select individual heads/spots
+   with their numbered buttons: exactly five presets must appear in each active
+   compatible individual column and disappear from the corresponding group column.
+   Switch back to groups and verify the reverse. Start/stop one pad
+   twice and verify its running indication changes. TRACK SELECT 1 selects bar
+   knobs; STOP ALL CLIPS stops only that strip's FX, not a running scene sequence.
+2. Press SCENE LAUNCH 1, TRACK SELECT 1, then screen Edit FX presets. Select slot 1,
+   name it TEST Triangle, Shape Triangle, base-relative minimum 20%, maximum 100%,
+   cycle 4 beats, Spread 0. Save: this must not launch. Launch from row 1/column 1.
+   At bar fader 80%, output must remain between 16% and 80% before master. Change
+   fader to 50%: range becomes 10%-50%. Zero fader stays dark. FLASH may override
+   dimming while held; release restores modulation, not a saved old intensity.
+3. Use knob 2 (Depth), then Store current FX for slot 1. Its displayed minimum
+   must follow depth. Change Shape to Saw up and Save while running: Triangle must
+   continue. Save & Apply now must deliberately switch. Stop FX: latest bar fader
+   value returns immediately. Verify the source scene stayed unchanged.
+4. Enter an out-of-range percentage/invalid duration: immediate error and Save
+   disabled. Switch a dimmer to a quarter-beat cycle and a sufficiently high BPM:
+   when fewer than four output frames fit a cycle, a timing warning must appear.
+   Do not use this as a software strobe test; restore 120 BPM and a slow rate.
+5. Select heads group track 2, Dimmer. In More, inspect fixture order by names.
+   Use All + Spread 100%: two heads pulse half a cycle apart. Spread 0 synchronizes.
+   Reverse the order and compare. Odd/Even selects only one head; the other keeps
+   its base output. Alternating uses both with opposing phases. One by one is
+   distinct from a generic square wave. Restore All. Single-fixture Spread must
+   be unavailable/explained, not pretend to create a multi-head wave.
+6. Change the bar's saved dimmer timing to Seconds, 4 seconds/cycle. Launch, then
+   change BPM from 120 to 90: this FX must keep its four-second cycle. Change
+   seconds rate during the run: progress must not reset to the start.
+7. SCENE LAUNCH 2, bar track 1. Select Follow base Two colours via factory chooser,
+   launch and use COLOR to change base colour: the look must follow. Open editor
+   and choose Fixed palette [blue, magenta, red], Smooth, 8 beats/cycle. Apply now:
+   palette must traverse all colours including last-to-first. Switch to Step and
+   compare. Base colour changes must not filter/remove palette colours; intensity
+   still works. Screen explains the fixed palette's ownership. Repeat briefly
+   on a Q-Spot: main white is zero while palette runs and returns to current base
+   white after Stop. Ring channels must not be changed by this colour effect.
+8. While dimmer runs, start Colour and Move on a head: all three families coexist.
+   Launch another Colour slot: only the old Colour is replaced. Do the same for
+   Move: no hidden Circle + Figure 8 combination remains from an earlier slot.
+   Pad LEDs and running status must agree. Switch group/single and back: remembered
+   group/single effects must suspend/reactivate correctly without double owners.
+9. In Move choose an existing Circle factory, set alternate-head X reflection and
+   Spread 0. Compare with Normal and with the old Mirror factory (phase offset):
+   reflection and phase offset must not be described as identical. Beam permissions
+   remain active; never enlarge areas just to make an invalid pattern appear lit.
+10. Save the TEST slots, stop FX, ensure haze zero/blackout, then restart backend
+    once alongside the other restart checks in section 7. Presets must survive
+    and no FX must start automatically. Fixture renaming must not lose slots.
+    Reset a TEST slot to factory and verify the saved override is removed without
+    silently changing a running snapshot.
+
+## 5b. Target Tour and combined movement
+
+1. Keep measured targets X/Y available (substitute two existing measured target
+   names, not the similarly named areas). On APC40 SCENE LAUNCH 3, TRACK SELECT 2,
+   open Edit FX presets, slot 5. Name it TEST Target Tour. Select Target Tour,
+   add targets X then Y, travel 4 beats, hold 4 beats, Pattern None. Save & Apply
+   now. Heads must travel to X, hold precisely, travel to Y, hold, and repeat.
+   Travel uses normal beam protection: an allowed endpoint never illuminates
+   an undefined/excluded route. FLASH must not bypass mandatory dark protection.
+   Device knob 1 must read Travel with beats/travel. Turn it: travel duration
+   changes, not Hold or the optional pattern Rate. Repeat with seconds timing:
+   seconds/travel must appear and changing it must not restart the tour.
+2. With the destination target inside permitted areas, change Pattern to Circle,
+   small Size, Apply now. Heads must travel without circles, circle during the
+   hold, then travel without circles again. Test Figure 8 similarly. A target
+   outside permitted areas must reject a patterned tour with an actionable error;
+   the previous valid run must remain. Pattern None may use a reachable stationary
+   target outside included areas, but only the exact hold endpoint may be lit.
+3. During this Move tour start an existing colour/intensity scene sequence. The
+   tour continues independently. Run Dimmer and Colour families too if desired.
+   Stop the sequence: tour continues. Stop Move: current underlying base aim
+   returns, without resetting colour/intensity or stored scene definitions.
+4. Reorder X/Y in the editor and Save: current tour remains its launch snapshot.
+   Apply now restarts deliberately with the new order. While the tour runs, try
+   changing its target coordinates or room size: actionable Stop-first error.
+   Saved tour references prevent target deletion even after Stop until removed
+   from the preset. An uncalibrated/unreachable target or empty selection must
+   not partially launch a group or stop the prior valid effect.
+5. Repeat a seconds-based tour through Preview/Go in section 6. Confirm both the
+   current target/travel/hold phase and pattern phase survive Go, without step 1
+   restarting and without any earlier live output change. Tempo stays live.
+
+## 5c. Fusion Orbit rings: manual controls, segment FX and scenes
+
+These are real-output tests only when deliberately enabled at the club. The
+current 37ch patch uses universe 5: head 1 starts at 7, head 2 at 44. Ring
+intensity is DMX 19/56, ring strobe 20/57, section RGB ranges 24-41/61-78.
+Native ring colour/program/speed channels 21-23/58-60 remain fixed at zero.
+Do not change the fixture modes or touch other universes/Resolume.
+
+1. Keep beam faders at zero. Select heads group with numbered button 2.
+   Press its physical A/B (screen RING): it lights; nothing emits merely because
+   it was selected. COLOR opens ALL and section 1-6 selectors, followed by a
+   compact palette. Select ALL, Red, then set the top knob to about 30% ring
+   intensity. Both rings should become uniformly red; beams stay off. Confirm
+   no fixture-native macro animation overrides the selected RGB.
+2. Select section 1 then Blue. Only section 1 on each head changes. Repeat
+   sections 2-6 to identify their physical positions; record the actual numbering
+   rather than assuming clockwise order. ALL then Green makes every section
+   green. Colour selection must not change ring intensity.
+3. Return to beam context, set top saturation to 30%, select RING and set its
+   intensity to 70%. Toggle back: top indication returns to 30% saturation and
+   the ring stays at 70%. Toggle again: indication returns to 70% ring intensity.
+   Repeated switching must not change either colour/intensity. Track fader still
+   changes beam intensity only. FLASH remains beam-only.
+4. With RING active toggle STROBE: only rings strobe. Return to beam context:
+   its strobe indication/state remains separate. CUE rate adjusts whichever
+   beam/ring strobes are already on without switching others on. Turn both off.
+   The Fusion strobe Hz indication remains approximate pending measurement.
+5. SCENE LAUNCH 1 selects Dimmer. With track 2 RING active, open Edit FX presets:
+   title says Ring, five slots appear, and fixture ordering lists twelve sections.
+   Prepare a One by one look with full Spread and visible ring intensity; Apply.
+   Confirm sequential segment modulation, including across both heads. Try
+   reversing/reordering and Odd/Even. Switch to Colour (SCENE LAUNCH 2), try
+   Rainbow with Spread, then an ordered fixed palette. Beam colours/intensity
+   must remain unchanged, and ring Dimmer/Colour combine without rewriting base.
+6. Turn RING off, run a beam Dimmer/Colour look while ring FX continue. Turn RING
+   on and STOP FX: only ring FX stop, restoring current ring base colours.
+   Beam FX remain. Turn RING off and STOP FX: existing beam-context stop works.
+   Move remains a fixture-level effect, not another six movement participants.
+7. With known ring colours/intensity, use an existing permitted movement tour
+   through a dark transfer or aim the beam into a forbidden area. Beam protection
+   must remain enforced, including under FLASH, while rings stay illuminated.
+   Master must scale both beam and ring; BLACKOUT must extinguish both without
+   destroying their stored/runtime base values. Restore master/blackout.
+8. Use numbered head 1 button 3 to switch to individuals. Group column goes
+   standby and individual columns become active. Each compatible active strip
+   still has five FX rows. Set different ring looks per head. Return to group
+   button 2: remembered group controls/runs resume; switching RING alone never
+   recalls any values. Repeat a group/single switch with both component FX running.
+9. In Show create/edit a TEST scene, select the head/group ring family. First
+   choose Uniform ring or Individual sections; do not show eighteen RGB fields
+   immediately. Save a uniform look, then a different TEST six-section look.
+   Reopen each without recall: saved values stay unchanged. Merely switching the
+   editor view must not flatten a multicolour look. Explicit uniform colour edits
+   replace all sections. Capture and a scene sequence must reproduce the sections.
+   Sequence Live controls must respect uniform or selected individual ring fields.
+10. Enter PREVIEW. Change ring colours/intensity/strobe and start different ring
+    FX: live rings must remain unchanged. Check both room monitors: each head
+    has six ring sections around its beam dot, showing its respective Live or
+    Preview colours/intensity/FX. A dark beam must not hide an illuminated ring.
+    Inactive Preview retains dark ring outlines. Ring strobe animates only the
+    ring; high rates use the existing screen blink cap. Section order on screen
+    is schematic; do not infer physical clockwise orientation from it.
+    Master dims both ring drawings; BLACKOUT darkens Live but not active Preview.
+    GO promotes staged values/current FX
+    phase. Beam and ring FX remain independent. Save a ring preset, restart:
+    it survives independently of beam presets, but no FX/ring output auto-starts.
+    No persistent haze disclaimer or large FX help paragraph should push the
+    device knobs out of view; safety/status labels remain visible.
+
+## 6. Animated preview and exact-phase Go
+
+1. Start TEST Tour live. Enter PREVIEW. Confirm two clearly labelled views:
+   Live on the left, Preview on the right.
+   Before entering Preview, its room and neutral fixture markers must be visible,
+   without live colours, beams, strobe or haze. Both monitors belong in the APC40
+   right pane; pads/tracks retain full height and right-pane controls remain scrollable.
+   Both monitor headers and room drawings must align horizontally. At the club's
+   normal maximized viewport, device knobs must be visible without being pushed
+   below an oversized sequence status panel.
+2. Prepare a different sequence/step order in Preview. Run it long enough to see
+   several animated steps. The physical heads and Live view must continue the
+   original live show, unaffected by preview commands or global-mask changes.
+3. Pause/resume the preview sequence. Only its timeline should pause/resume.
+4. During a nonzero preview fade, press GO. Live must adopt the CURRENT preview
+   position/colour/step/fade progress and continue from there, not restart at X.
+5. Repeat Go during a hold. Remaining hold time must carry over, not restart.
+6. Preview a static scene, hold FLASH, then release: FLASH acts live only while held;
+   the staged scene must not be sent before Go. Master/blackout also remain live.
+
+## 7. Definitions, reconnect and restart
+
+1. Try deleting a scene used by TEST Tour. It must be blocked with a useful reference
+   message. Try deleting a target/zone referenced by a saved scene: also blocked.
+   Cancel; never delete existing production definitions for this test.
+   While TEST Tour is running/paused, try editing a referenced destination's geometry:
+   it must require Stop first. Display-name edits and runtime safety permissions must
+   remain available. Stop before making actual coordinate changes.
+2. Unassign one TEST scene pad without deleting its scene. The scene and sequence
+   reference must remain available. Reassign that existing scene to an empty pad.
+3. While a sequence runs, reload the browser and reconnect APC40. Playback must not
+   restart/stop; current page/status/LED feedback must recover.
+4. With output blacked out and haze zero, restart the backend manually.
+   Definitions and assignments persist, but no sequence starts automatically.
+   Heads start at rest; included zones may be restored, but an unreached saved aim
+   must not falsely show as reached.
+5. Deliberately start Move FX using those restored permissions. A rest position
+   outside the included areas alone must not block launch.
+6. Only if safe and practical, interrupt configured OLA delivery while running a
+   sequence. The error must be visible and playback must pause. Restore OLA/Retry;
+   playback requires deliberate resume, not automatic catch-up. Do not disconnect
+   or reconfigure Resolume's universes to perform this test.
+
+## 8. Optional haze automation - do not use blackout as a haze stop
+
+Skip if haze operation is not appropriate or the fixture is not ready.
+
+1. Stop other playback. Verify pump/fan are zero. Explicitly opt haze into a TEST
+   scene at a low, manufacturer-appropriate setting, then make a second TEST scene
+   with pump/fan zero. Do not guess safe warm-up/cooldown timings.
+2. Recall each once: only explicitly saved pump/fan values change.
+   In Live, small gray bubbles must start at the hazer, grow as they travel and
+   fade away at the end. Pump controls brightness, highest at 100%; fan controls
+   travel speed, with zero pausing travel. Reduced-motion settings pause travel.
+   Enter Preview and change only preview pump/fan: its bubbles must change while
+   live output/bubbles stay unchanged. This is a command indicator, not measured fog.
+3. If testing haze inside a sequence, include the zero-pump scene and keep Stop
+   and the pump fader within reach. Stop freezes current values; it does NOT
+   automatically turn haze off. End by explicitly setting pump/fan to zero.
+4. Lighting blackout/master must not alter haze; normal HAZE hold must release to
+   the underlying value. Follow the hazer's shutdown/cooldown instructions.
+
+## Finish
+
+1. Stop sequences and FX, release holds, explicitly set haze pump/fan zero, and
+   enable blackout. Manual controls must remain usable without Release.
+2. Restore the original zone permissions recorded at the beginning.
+3. Remove TEST sequence references first, then TEST scenes/pad assignments only.
+   Keep all original configuration, calibration and production scenes.
+4. Record failed section/step, active scene/sequence, live versus preview, controller
+   used, displayed error and what the physical fixture did. Do not hide failures by
+   changing calibration or disabling protection.

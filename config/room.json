@@ -1,0 +1,246 @@
+{
+  "room": {
+    "size_x": 5.6,
+    "size_y": 5.55,
+    "size_z": 2.3
+  },
+  "targets": [
+    {
+      "id": "dance-floor-center",
+      "name": "Center of dance floor",
+      "x": 3.05,
+      "y": 3.35,
+      "z": 0.0
+    },
+    {
+      "id": "floor-left-lower",
+      "name": "Left lower corner",
+      "x": 1.75,
+      "y": 2.45,
+      "z": 0.0
+    },
+    {
+      "id": "floor-left-upper",
+      "name": "Left upper corner",
+      "x": 1.75,
+      "y": 4.2,
+      "z": 0.0
+    },
+    {
+      "id": "floor-right-lower",
+      "name": "Right lower corner",
+      "x": 4.4,
+      "y": 2.45,
+      "z": 0.0
+    },
+    {
+      "id": "floor-right-upper",
+      "name": "Right upper corner",
+      "x": 4.4,
+      "y": 4.2,
+      "z": 0.0
+    },
+    {
+      "id": "disco-ball-rotating",
+      "name": "Disco ball rotating",
+      "x": 0.65,
+      "y": 4.0,
+      "z": 1.05
+    },
+    {
+      "id": "disco-ball-low",
+      "name": "Disco ball low",
+      "x": 0.45,
+      "y": 3.6,
+      "z": 1.22
+    },
+    {
+      "id": "disco-ball-high",
+      "name": "Disco ball high",
+      "x": 0.45,
+      "y": 3.35,
+      "z": 1.63
+    }
+  ],
+  "zones": [
+    {
+      "id": "dancfloor",
+      "name": "Dance floor",
+      "surface": "floor",
+      "mode": "include",
+      "corner": {
+        "x": 1.63,
+        "y": 2.3
+      },
+      "length": 2.87,
+      "width": 2.0
+    },
+    {
+      "id": "dj-booth",
+      "name": "DJ booth",
+      "surface": "floor",
+      "mode": "exclude",
+      "corner": {
+        "x": 1.52,
+        "y": 0.0
+      },
+      "length": 3.11,
+      "width": 2.1
+    },
+    {
+      "id": "absorber-booth-rechts",
+      "name": "Absorber Booth rechts",
+      "surface": "booth_wall",
+      "mode": "include",
+      "corner": {
+        "x": 3.88,
+        "z": 0.93
+      },
+      "length": 1.2,
+      "width": 1.0
+    },
+    {
+      "id": "absorber-booth-links",
+      "name": "Absorber Booth links",
+      "surface": "booth_wall",
+      "mode": "include",
+      "corner": {
+        "x": 0.96,
+        "z": 0.93
+      },
+      "length": 1.2,
+      "width": 1.0
+    },
+    {
+      "id": "absorber-linke-wand",
+      "name": "Absorber linke Wand",
+      "surface": "left_wall",
+      "mode": "include",
+      "corner": {
+        "y": 1.54,
+        "z": 0.93
+      },
+      "length": 1.2,
+      "width": 1.0
+    },
+    {
+      "id": "absorber-ru-ckwand-links-neben-tu-r",
+      "name": "Absorber Rückwand links neben Tür",
+      "surface": "far_wall",
+      "mode": "include",
+      "corner": {
+        "x": 1.27,
+        "z": 0.93
+      },
+      "length": 1.8,
+      "width": 1.0
+    },
+    {
+      "id": "absorber-ru-ckwand-rechts-neben-tu-r",
+      "name": "Absorber Rückwand rechts neben Tür",
+      "surface": "far_wall",
+      "mode": "include",
+      "corner": {
+        "x": 4.07,
+        "z": 0.93
+      },
+      "length": 1.0,
+      "width": 1.0
+    }
+  ],
+  "assignments": {
+    "moving-head-1": {
+      "aim_target": null,
+      "aim_zone": "dancfloor",
+      "include_zones": [
+        "dancfloor",
+        "dj-booth",
+        "absorber-booth-rechts",
+        "absorber-booth-links",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "absorber-ru-ckwand-rechts-neben-tu-r"
+      ],
+      "exclude_zones": []
+    },
+    "moving-head-2": {
+      "aim_target": null,
+      "aim_zone": "dancfloor",
+      "include_zones": [
+        "dancfloor",
+        "dj-booth",
+        "absorber-booth-rechts",
+        "absorber-booth-links",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "absorber-ru-ckwand-rechts-neben-tu-r"
+      ],
+      "exclude_zones": []
+    }
+  },
+  "strip_assignments": {
+    "fixture:moving-head-1": {
+      "aim_target": null,
+      "aim_zone": "absorber-ru-ckwand-links-neben-tu-r",
+      "include_zones": [
+        "absorber-ru-ckwand-links-neben-tu-r"
+      ],
+      "exclude_zones": [
+        "dj-booth"
+      ]
+    },
+    "fixture:moving-head-2": {
+      "aim_target": null,
+      "aim_zone": "absorber-ru-ckwand-links-neben-tu-r",
+      "include_zones": [
+        "absorber-ru-ckwand-links-neben-tu-r"
+      ],
+      "exclude_zones": [
+        "dj-booth"
+      ]
+    },
+    "apc40:2": {
+      "aim_target": null,
+      "aim_zone": "dancfloor",
+      "include_zones": [
+        "dancfloor",
+        "dj-booth",
+        "absorber-booth-rechts",
+        "absorber-booth-links",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "absorber-ru-ckwand-rechts-neben-tu-r"
+      ],
+      "exclude_zones": []
+    },
+    "apc40:3": {
+      "aim_target": null,
+      "aim_zone": "dancfloor",
+      "include_zones": [
+        "dancfloor"
+      ],
+      "exclude_zones": [
+        "dj-booth",
+        "absorber-ru-ckwand-rechts-neben-tu-r",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "absorber-linke-wand",
+        "absorber-booth-links",
+        "absorber-booth-rechts"
+      ]
+    },
+    "apc40:4": {
+      "aim_target": null,
+      "aim_zone": "absorber-ru-ckwand-rechts-neben-tu-r",
+      "include_zones": [
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "absorber-booth-rechts",
+        "absorber-booth-links",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-rechts-neben-tu-r"
+      ],
+      "exclude_zones": [
+        "dj-booth"
+      ]
+    }
+  }
+}

@@ -1,0 +1,376 @@
+{
+  "bindings": [
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 0
+      },
+      "action": {
+        "type": "hue",
+        "target": "all"
+      },
+      "relative": true
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 52
+      },
+      "action": {
+        "type": "flash",
+        "target": "all"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 4
+      },
+      "action": {
+        "type": "saturation",
+        "target": "all"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 8
+      },
+      "action": {
+        "type": "white",
+        "target": "all"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 12
+      },
+      "action": {
+        "type": "strobe",
+        "target": "all"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 40
+      },
+      "action": {
+        "type": "strobe_hold",
+        "target": "all"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 1
+      },
+      "action": {
+        "type": "hue",
+        "target": "led-bar-1"
+      },
+      "relative": true
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 53
+      },
+      "action": {
+        "type": "flash",
+        "target": "led-bar-1"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 5
+      },
+      "action": {
+        "type": "saturation",
+        "target": "led-bar-1"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 13
+      },
+      "action": {
+        "type": "strobe",
+        "target": "led-bar-1"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 41
+      },
+      "action": {
+        "type": "strobe_hold",
+        "target": "led-bar-1"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 2
+      },
+      "action": {
+        "type": "hue",
+        "target": "moving-heads"
+      },
+      "relative": true
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 54
+      },
+      "action": {
+        "type": "flash",
+        "target": "moving-heads"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 6
+      },
+      "action": {
+        "type": "saturation",
+        "target": "moving-heads"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 10
+      },
+      "action": {
+        "type": "white",
+        "target": "moving-heads"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 14
+      },
+      "action": {
+        "type": "strobe",
+        "target": "moving-heads"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 42
+      },
+      "action": {
+        "type": "strobe_hold",
+        "target": "moving-heads"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 3
+      },
+      "action": {
+        "type": "hue",
+        "target": "dj-spots"
+      },
+      "relative": true
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 55
+      },
+      "action": {
+        "type": "flash",
+        "target": "dj-spots"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 7
+      },
+      "action": {
+        "type": "saturation",
+        "target": "dj-spots"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 11
+      },
+      "action": {
+        "type": "white",
+        "target": "dj-spots"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 15
+      },
+      "action": {
+        "type": "strobe",
+        "target": "dj-spots"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 43
+      },
+      "action": {
+        "type": "strobe_hold",
+        "target": "dj-spots"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 16
+      },
+      "action": {
+        "type": "master",
+        "target": null
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 17
+      },
+      "action": {
+        "type": "intensity",
+        "target": "led-bar-1"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 18
+      },
+      "action": {
+        "type": "intensity",
+        "target": "moving-heads"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "cc",
+        "channel": 15,
+        "number": 19
+      },
+      "action": {
+        "type": "intensity",
+        "target": "dj-spots"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 15
+      },
+      "action": {
+        "type": "blackout",
+        "target": null
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 36
+      },
+      "action": {
+        "type": "scene",
+        "target": "test-scene"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 37
+      },
+      "action": {
+        "type": "scene",
+        "target": "test-scene-fast"
+      },
+      "relative": false
+    },
+    {
+      "key": {
+        "kind": "note",
+        "channel": 15,
+        "number": 12
+      },
+      "action": {
+        "type": "preview",
+        "target": null
+      },
+      "relative": false
+    }
+  ]
+}

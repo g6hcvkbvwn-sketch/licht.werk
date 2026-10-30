@@ -1,0 +1,17 @@
+{
+  "id": "look-unique-2-1",
+  "manufacturer": "Look Solutions",
+  "model": "Unique 2.1",
+  "fixture_type": "hazer",
+  "source": "docs/manuals/manual_look_unique_2_1.pdf, PDF p. 12 / section 5.4.1: pump then fan, 1–99% device settings. User supplies normalized pump/fan controls over the full DMX byte range; these are command levels, not an authoritative manufacturer DMX-to-percent curve. PDF p. 10: preserve powered cooldown; pump-off is not shutdown.",
+  "modes": [
+    {
+      "name": "2ch",
+      "channel_count": 2,
+      "channels": [
+        {"attribute": "pump", "label": "Pump command level"},
+        {"attribute": "fan", "label": "Fan command level"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "scenes": [
+    {
+      "name": "Red-Green",
+      "fade_seconds": 2.0,
+      "fade_timing": "seconds",
+      "fade_beats": 1.0,
+      "groups": {},
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0
+        },
+        "moving-head-1": {
+          "intensity": 1.0,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 1.0,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.0,
+          "ring_intensity": 0.0,
+          "ring_strobe": 0.0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "moving-head-2": {
+          "intensity": 1.0,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 1.0,
+          "blue": 0.0,
+          "white": 0.0,
+          "ring_intensity": 0.0,
+          "ring_strobe": 0.0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "dj-spot-1": {
+          "intensity": 0.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.0
+        },
+        "dj-spot-2": {
+          "intensity": 0.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "disco-ball-rotating",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [
+            "absorber-ru-ckwand-links-neben-tu-r"
+          ],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [
+            "absorber-ru-ckwand-rechts-neben-tu-r"
+          ],
+          "excluded_zone_ids": []
+        }
+      },
+      "id": "red-green"
+    },
+    {
+      "name": "All blue",
+      "fade_seconds": 5.0,
+      "fade_timing": "seconds",
+      "fade_beats": 1.0,
+      "groups": {},
+      "fixtures": {
+        "moving-head-1": {
+          "intensity": 0.5,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0,
+          "ring_intensity": 0.0,
+          "ring_strobe": 0.0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "moving-head-2": {
+          "intensity": 1.0,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0,
+          "ring_intensity": 0.0,
+          "ring_strobe": 0.0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "disco-ball-rotating",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [
+            "dancfloor"
+          ],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [
+            "dancfloor"
+          ],
+          "excluded_zone_ids": []
+        }
+      },
+      "id": "all-blue"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+.show-dialog.scene-editor { width: min(1540px, 96vw); }
+.editor-table-scroll { overflow: auto; max-width: 100%; }
+.editor-table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+.editor-table th, .editor-table td { min-width: 150px; padding: 10px; border: 1px solid #454552; vertical-align: top; }
+.editor-table th { background: #22222d; }
+.editor-table tbody th { min-width: 115px; text-align: left; }
+.editor-table td > label { margin-bottom: 8px; }
+.editor-table .editor-group { background: #25304455; border-left: 2px solid #8199b8; }
+.editor-table .editor-inactive { opacity: .7; }
+.editor-number { display: grid !important; gap: 4px !important; margin: 8px 0; }
+.editor-error { color: #fda4af; display: block; }
+.editor-warning { border: 1px solid #d5a545; padding: 10px; color: #f9d888; margin: 8px 0; }
+.editor-warning button { margin: 5px; }
+.editor-swatch-row { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+.editor-swatch-row button { min-width: 27px; min-height: 28px !important; border: 1px solid #aaa; }
+.editor-position { display: grid; gap: 8px; margin-top: 8px; }
+.editor-position select { width: 100%; }
+.editor-live-controls { border: 1px solid #454552; border-radius: 6px; padding: 12px; }
+.editor-live-controls legend { font-weight: bold; }
+.editor-live-scope { border-top: 1px solid #454552; margin-top: 10px; padding-top: 8px; }
+.editor-live-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.editor-invalid { outline: 1px solid #fb7185; }

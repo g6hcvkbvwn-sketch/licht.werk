@@ -1,0 +1,14 @@
+{
+  "fixtures": {
+    "led-bar-1": "Washlight",
+    "moving-head-1": "MH1",
+    "moving-head-2": "MH2",
+    "dj-spot-1": "Booth 1",
+    "dj-spot-2": "Booth 2",
+    "hazer-1": "Hazer"
+  },
+  "groups": {
+    "dj-spots": "Booth Spots",
+    "moving-heads": "MH Group"
+  }
+}

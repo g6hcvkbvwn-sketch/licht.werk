@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "slots": [
+    {
+      "target": "moving-heads",
+      "page": "chase",
+      "row": 0,
+      "definition": {
+        "name": "Pulse",
+        "kind": "chase",
+        "params": {
+          "beats": 1.0,
+          "size": 1.0,
+          "spread": 0.0,
+          "softness": 1.0,
+          "timing": "beats",
+          "seconds": 4.0,
+          "shape": "saw_up",
+          "maximum": 1.0,
+          "selection": "all",
+          "order": [],
+          "reverse": false,
+          "mirror": "none",
+          "mirror_alternate": true,
+          "colour_mode": "base",
+          "palette": [
+            "#0000ff",
+            "#ff00ff"
+          ],
+          "transition": "smooth",
+          "target_ids": [],
+          "travel": 4.0,
+          "hold": 4.0,
+          "pattern": "current"
+        }
+      }
+    },
+    {
+      "target": "moving-heads",
+      "page": "rainbow",
+      "row": 0,
+      "definition": {
+        "name": "Slow rainbow",
+        "kind": "rainbow",
+        "params": {
+          "beats": 16.0,
+          "size": 1.0,
+          "spread": 0.0,
+          "softness": 0.0,
+          "timing": "beats",
+          "seconds": 4.0,
+          "shape": "legacy",
+          "maximum": 1.0,
+          "selection": "all",
+          "order": [],
+          "reverse": false,
+          "mirror": "none",
+          "mirror_alternate": true,
+          "colour_mode": "palette",
+          "palette": [
+            "#0000ff",
+            "#ff00ff"
+          ],
+          "transition": "smooth",
+          "target_ids": [],
+          "travel": 4.0,
+          "hold": 4.0,
+          "pattern": "current"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "fixtures": [
+    {
+      "id": "led-bar-1",
+      "name": "LED bar 1",
+      "definition": "cameo-thunder-wash-100-rgb",
+      "mode": "6Ch",
+      "universe": 5,
+      "start_address": 1,
+      "enabled": true,
+      "groups": []
+    },
+    {
+      "id": "moving-head-1",
+      "name": "Moving head 1",
+      "definition": "equinox-fusion-orbit-mkii",
+      "mode": "37ch",
+      "universe": 5,
+      "start_address": 7,
+      "enabled": true,
+      "groups": [
+        "moving-heads"
+      ]
+    },
+    {
+      "id": "moving-head-2",
+      "name": "Moving head 2",
+      "definition": "equinox-fusion-orbit-mkii",
+      "mode": "37ch",
+      "universe": 5,
+      "start_address": 44,
+      "enabled": true,
+      "groups": [
+        "moving-heads"
+      ]
+    },
+    {
+      "id": "dj-spot-1",
+      "name": "DJ spot 1",
+      "definition": "cameo-q-spot-15-rgbw-bk",
+      "mode": "9CH",
+      "universe": 5,
+      "start_address": 81,
+      "enabled": true,
+      "groups": [
+        "dj-spots"
+      ]
+    },
+    {
+      "id": "dj-spot-2",
+      "name": "DJ spot 2",
+      "definition": "cameo-q-spot-15-rgbw-bk",
+      "mode": "9CH",
+      "universe": 5,
+      "start_address": 90,
+      "enabled": true,
+      "groups": [
+        "dj-spots"
+      ]
+    },
+    {
+      "id": "hazer-1",
+      "name": "Hazer",
+      "definition": "look-unique-2-1",
+      "mode": "2ch",
+      "universe": 5,
+      "start_address": 99,
+      "enabled": true,
+      "groups": []
+    }
+  ]
+}

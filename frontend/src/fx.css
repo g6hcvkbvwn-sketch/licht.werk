@@ -1,0 +1,35 @@
+.fx-dialog { width: min(940px, 94vw); }
+.fx-dialog p { line-height: 1.45; }
+.fx-dialog .fx-context { padding: 10px; border: 1px solid #65d8af; font-weight: 700; }
+.fx-dialog .fx-context.preview { border-color: #ffb454; color: #ffcb82; }
+.fx-fields { border: 0; padding: 0; min-width: 0; display: grid; gap: 12px; }
+.fx-slots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.fx-slots button { display: grid; gap: 5px; padding: 10px 6px; overflow-wrap: anywhere; }
+.fx-slots button.active { outline: 2px solid #65d8af; }
+.fx-slots small { font-weight: normal; }
+.fx-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+.fx-dialog .fx-number { display: flex; gap: 8px; }
+.fx-number small { flex-basis: 100%; }
+.fx-invalid { color: #ff9ca8; }
+.fx-dialog [aria-invalid="true"] { border-color: #ff9ca8; }
+.fx-warnings { color: #ffcb82; }
+.fx-notice { color: #83eac1; }
+.fx-running { padding: 10px; background: #242430; }
+.fx-palette { display: flex; gap: 10px; flex-wrap: wrap; }
+.fx-palette > div { display: flex; align-items: center; gap: 5px; }
+.fx-dialog input[type="color"] { padding: 2px; width: 52px; height: 40px; }
+.fx-dialog details { border: 1px solid #4a4a59; padding: 12px; }
+.fx-dialog summary { cursor: pointer; min-height: 32px; font-weight: 700; }
+.fx-dialog details > label { margin-top: 12px; }
+.fx-order { display: grid; gap: 8px; padding-left: 24px; }
+.fx-order li { padding-left: 4px; }
+.fx-order li span { display: inline-block; min-width: 150px; margin-right: 8px; }
+.fx-order button { margin-right: 5px; }
+.fx-tour { display: grid; gap: 12px; padding: 12px; border: 1px solid #4a4a59; }
+.fx-tour h3 { margin: 0; }
+.fx-edit-action { display: grid; gap: 6px; margin: 10px 0; }
+@media (max-width: 600px) {
+  .fx-slots { gap: 4px; }
+  .fx-slots button { font-size: 12px; }
+  .fx-order li span { min-width: 0; width: 100%; }
+}

@@ -1,0 +1,52 @@
+{
+  "heads": {
+    "moving-head-1": {
+      "orientation": "ceiling",
+      "position": {
+        "x": 1.77,
+        "y": 2.5,
+        "z": 2.13
+      },
+      "calibration": {
+        "pan_sign": -1,
+        "tilt_sign": 1,
+        "pan_zero_azimuth_deg": -92.77499180267624,
+        "tilt_axis_deg": 106.01521916622134
+      },
+      "limits": {
+        "pan_min": 0.0,
+        "pan_max": 1.0,
+        "tilt_min": 0.0,
+        "tilt_max": 1.0
+      },
+      "rest": {
+        "pan": 0.4952260134149895,
+        "tilt": 0.9509186351706046
+      }
+    },
+    "moving-head-2": {
+      "orientation": "ceiling",
+      "position": {
+        "x": 4.41,
+        "y": 2.5,
+        "z": 2.13
+      },
+      "calibration": {
+        "pan_sign": -1,
+        "tilt_sign": 1,
+        "pan_zero_azimuth_deg": -89.56838370583634,
+        "tilt_axis_deg": 106.77292123624062
+      },
+      "limits": {
+        "pan_min": 0.0,
+        "pan_max": 1.0,
+        "tilt_min": 0.0,
+        "tilt_max": 1.0
+      },
+      "rest": {
+        "pan": 0.16693205016039642,
+        "tilt": 0.9467866516685416
+      }
+    }
+  }
+}
