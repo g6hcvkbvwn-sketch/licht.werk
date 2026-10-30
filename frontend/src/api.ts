@@ -188,7 +188,7 @@ export interface MapFixture {
   preview_strobe_hz: number | null; // same for the state being edited
   live_beam?: [number, number] | null;
   preview_beam?: [number, number] | null;
-  shape?: "circle" | "rectangle";
+  shape?: "circle" | "rectangle" | "spot";
   guard_reason?: string | null;
   setup_override?: boolean;
   live_haze?: { pump: number; fan: number } | null;
@@ -532,10 +532,10 @@ export const APC40 = {
   deviceKnobFirst: 0x10,
   cueLevel: 0x2f,
   trackKnobFirst: 0x30,
-  up: 94,
-  down: 95,
-  left: 97,
-  right: 96,
+  deviceOnOff: 0x3e,
+  deviceLock: 0x3f,
+  deviceLeft: 0x3a,
+  deviceRight: 0x3b,
   play: 91,
   record: 93,
 } as const;
@@ -590,6 +590,7 @@ export interface Apc40Pad {
   excluded: boolean;
   explicitly_excluded: boolean;
   sequence: string | null;
+  sequence_loop?: boolean | null;
   fixture_badges: string[];
 }
 
@@ -599,6 +600,7 @@ export interface Apc40State {
   position_dialog_item: string | null;
   position_mode: "aim" | "permissions";
   show_dialog: { id: number; kind: "scene" | "sequence" | null; item: string | null; pad: number };
+  fx_dialog: { id: number; track: number | null; page: string | null; slot: number; component: "beam" | "ring" | null };
   connected: boolean;
   device: string | null;
   other_connected: boolean;

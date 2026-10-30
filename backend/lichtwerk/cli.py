@@ -27,6 +27,7 @@ from .midi_mapping import MidiMappingStore
 from .room import RigStore
 from .room_map import MapStore
 from .scenes import SceneStore
+from .sequences import SequenceStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -117,6 +118,7 @@ def main() -> None:
     library = load_fixture_library(args.fixtures)
     patch = load_patch(args.patch, library, settings.universes)
     scenes = SceneStore.load(args.scenes, patch)
+    sequences = SequenceStore.load(args.scenes.with_name("sequences.json"), scenes)
     rig = RigStore.load(args.room, args.heads, patch)
     midi = MidiMappingStore.load(args.midi, patch)
     apc40_pads = PadStore.load(args.apc40)
@@ -126,6 +128,7 @@ def main() -> None:
         patch=patch,
         fixture_library=library,
         scene_store=scenes,
+        sequence_store=sequences,
         rig_store=rig,
         midi_store=midi,
         apc40_pads=apc40_pads,

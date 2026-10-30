@@ -52,6 +52,7 @@ class PadView(BaseModel):
     label: Optional[str] = None
     scene: Optional[str] = None
     sequence: Optional[str] = None
+    sequence_loop: Optional[bool] = None
     scene_colour: Optional[str] = None
     missing: bool = False  # assigned scene no longer exists
     active: bool = False
@@ -94,6 +95,14 @@ class ShowDialogView(BaseModel):
     pad: int
 
 
+class FxDialogView(BaseModel):
+    id: int
+    track: Optional[int]
+    page: Optional[str]
+    slot: int
+    component: Optional[Literal["beam", "ring"]]
+
+
 class Apc40View(BaseModel):
     connected: bool
     device: Optional[str]
@@ -118,6 +127,7 @@ class Apc40View(BaseModel):
     position_dialog_kind: Optional[Literal["target", "zone"]]
     position_dialog_item: Optional[str]
     show_dialog: ShowDialogView
+    fx_dialog: FxDialogView
     pads: list[PadView]
     knobs: list[KnobView]
     scene_colours: dict[str, str]
@@ -228,6 +238,8 @@ def build_router(
                     known = {s.id: s for s in sequences.store.all()} if sequences is not None else {}
                     entry.missing = assignment.sequence not in known
                     entry.label = known[assignment.sequence].name if not entry.missing else f"{assignment.sequence} (missing)"
+                    if not entry.missing:
+                        entry.sequence_loop = known[assignment.sequence].loop
                     playback = sequences.status() if sequences is not None else None
                     entry.active = bool(
                         playback and playback["id"] == assignment.sequence
@@ -320,6 +332,7 @@ def build_router(
             show_dialog=ShowDialogView(**dict(zip(
                 ("id", "kind", "item", "pad"), control.show_dialog_request(),
             ))),
+            fx_dialog=_fx_dialog_view(control),
             pads=pads,
             knobs=knobs,
             scene_colours={name: hw.PALETTE[v] for name, v in hw.SCENE_PAD_COLOURS.items()},
@@ -403,3 +416,11 @@ def build_router(
         return view()
 
     return router
+
+
+def _fx_dialog_view(control: Apc40Control) -> FxDialogView:
+    request_id, request = control.fx_dialog_request()
+    if request is None:
+        return FxDialogView(id=request_id, track=None, page=None, slot=0, component=None)
+    track, page, slot, component = request
+    return FxDialogView(id=request_id, track=track, page=page, slot=slot, component=component)

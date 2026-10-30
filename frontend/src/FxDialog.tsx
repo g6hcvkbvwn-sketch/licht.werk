@@ -3,6 +3,7 @@ import {
   FX_FAMILIES, getFxSlots, resetFxSlot, saveFxSlot, startFxSlot, stopFxFamily, storeCurrentFx,
   type EffectParams, type FxDefinition, type FxPage, type FxSlots, type FxComponent,
 } from "./fxApi";
+import DialogFrame from "./DialogFrame";
 import "./fx.css";
 
 const BEATS = [0.25, 0.5, 1, 2, 4, 8, 16, 32];
@@ -85,13 +86,14 @@ interface Props {
   stripActive: boolean;
   preview: boolean;
   component?: FxComponent;
+  initialSlot?: number;
   onClose: () => void;
 }
 
-export default function FxDialog({ track, page, stripName, stripActive, preview, component = "beam", onClose }: Props) {
+export default function FxDialog({ track, page, stripName, stripActive, preview, component = "beam", initialSlot = 0, onClose }: Props) {
   const [data, setData] = useState<FxSlots | null>(null);
   const [draft, setDraft] = useState<FxDefinition | null>(null);
-  const [row, setRow] = useState(0);
+  const [row, setRow] = useState(initialSlot);
   const [factory, setFactory] = useState("");
   const [tour, setTour] = useState(false);
   const [error, setError] = useState("");
@@ -101,7 +103,6 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
   const inFlight = useRef(false);
   const generation = useRef(0);
   const alive = useRef(true);
-  const dialog = useRef<HTMLDivElement>(null);
   const family = FX_FAMILIES[page];
 
   const loadDraft = (definition: FxDefinition) => {
@@ -122,7 +123,7 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
         if (!alive.current || inFlight.current || generation.current !== requestGeneration) return;
         setData(next); setConnected(true);
         if (!initialized) {
-          loadDraft(next.slots[0]);
+          loadDraft(next.slots[initialSlot] ?? next.slots[0]);
           initialized = true;
         }
       } catch (e) {
@@ -131,12 +132,9 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
     };
     void refresh();
     const timer = window.setInterval(refresh, 1000);
-    const previous = document.activeElement;
-    dialog.current?.focus();
     return () => {
       alive.current = false;
       window.clearInterval(timer);
-      if (previous instanceof HTMLElement) previous.focus();
     };
   }, [track, page, component]);
 
@@ -155,10 +153,6 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
       inFlight.current = false;
       if (alive.current) setBusy(false);
     }
-  };
-  const close = () => {
-    if (!busy && (!draft || !data || JSON.stringify(draft) === JSON.stringify(data.slots[row])
-      || window.confirm("Discard unsaved FX preset edits?"))) onClose();
   };
   const p = draft?.params;
   const change = (params: Partial<EffectParams>) => {
@@ -185,32 +179,40 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
   const canRun = !launchProblem && !busy;
   const matchingRun = !!data?.running && data.running.slot === row;
 
-  return <div className="dialog-backdrop">
-    <div className="show-dialog fx-dialog" role="dialog" aria-modal="true" aria-labelledby="fx-title"
-      tabIndex={-1} ref={dialog} onKeyDown={(e) => {
-        if (e.key === "Escape") { e.stopPropagation(); close(); }
-        if (e.key === "Tab") {
-          const nodes = dialog.current?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), input:not(:disabled), select:not(:disabled), summary',
-          );
-          const visible = Array.from(nodes ?? []).filter((node) => node.getClientRects().length);
-          const first = visible[0], last = visible[visible.length - 1];
-          if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) {
-            e.preventDefault(); last?.focus();
-          } else if (!e.shiftKey && (document.activeElement === last || document.activeElement === dialog.current)) {
-            e.preventDefault(); first?.focus();
-          }
-        }
-      }}>
-      <header><h2 id="fx-title">{family.name} FX · {component === "ring" ? "Ring · " : ""}{stripName} · strip {track}</h2>
-        <button type="button" disabled={busy} onClick={close}>Close</button></header>
-      <p className={preview ? "fx-context preview" : "fx-context"}>
-        {preview ? "PREVIEW · Start / Apply / Stop affect staged FX, not live output." : "LIVE · Start / Apply / Stop may change output now."}
-      </p>
-      <p className="muted">Save changes persistent next-run data, including in Preview; it never changes the running snapshot.
-        Reset also leaves running FX alone. Go promotes staged FX, not unsaved editor changes.</p>
+  const presetTools = <>
+    <button type="button" disabled={busy || !contextReady || !matchingRun} onClick={() => {
+      if (dirty && !window.confirm("Replace unsaved draft and saved slot with current running FX?")) return;
+      void perform(() => storeCurrentFx(track, page, row, component), "Current FX stored. Base / scene values were not captured.", true);
+    }}>Store current FX in this slot</button>
+    <button type="button" disabled={busy || !connected} onClick={() => {
+      if (window.confirm(`Reset slot ${row + 1} to factory? Saved edits and this draft will be replaced; running FX stays unchanged.`))
+        void perform(() => resetFxSlot(track, page, row, component), "Factory definition restored; running snapshot unchanged.", true);
+    }}>Reset to factory</button>
+  </>;
+  const target = preview ? "Preview" : "Live";
+  return <DialogFrame id="fx" size="medium" className="fx-dialog" dirty={dirty} busy={busy} onClose={onClose} saveNote preview={preview}
+    title={`${family.name} FX · ${component === "ring" ? "Ring · " : ""}${stripName} · strip ${track}`}
+    context={`Slot ${row + 1} · ${preview ? "Start / Apply / Stop affect staged FX, not live output." : "Start / Apply / Stop may change output now."}`}
+    status={<>
       {error && <div className="banner error" role="alert">{error}</div>}
       {notice && <p className="fx-notice" role="status">{notice}</p>}
+    </>}
+    footer={data && draft && p ? <>
+      <button type="button" disabled={!canSave} onClick={() => void perform(
+        () => saveFxSlot(track, page, row, draft, false, component), "Saved for next launch. Running snapshot unchanged.", true,
+      )}>Save for next launch</button>
+      <button type="button" disabled={!canSave || !canRun || !participants.length} onClick={() => void perform(
+        () => saveFxSlot(track, page, row, draft, true, component),
+        `Saved and applied in ${preview ? "PREVIEW (staged)" : "LIVE"}.`, true,
+      )}>Save &amp; apply to {target}</button>
+      <button type="button" disabled={busy || !contextReady || !data.running} onClick={() => void perform(
+        () => stopFxFamily(track, page, component), `Stopped ${family.name} in ${preview ? "PREVIEW" : "LIVE"}; saved slots unchanged.`,
+      )}>Stop {family.name} family</button>
+      <button type="button" disabled={!canRun || savedErrors.length > 0 || !savedParticipantCount} onClick={() => void perform(
+        () => startFxSlot(track, page, row, component), `Started saved slot ${row + 1}. Unsaved draft was not applied.`,
+      )}>Start saved slot {row + 1}{dirty ? " (ignores draft)" : ""}</button>
+      <details className="dialog-more"><summary>More</summary><div className="dialog-more-menu">{presetTools}</div></details>
+    </> : null}>
       {!data || !draft || !p ? <p>Loading saved FX presets… Retrying automatically.</p> : <>
         <nav className="fx-slots" aria-label="FX preset slots">
           {Array.from({ length: 5 }, (_, index) => <button key={index} type="button"
@@ -218,7 +220,8 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
             className={row === index ? "active" : ""} onClick={() => {
               if (index === row || (dirty && !window.confirm("Discard unsaved edits and select another slot?"))) return;
               setRow(index); loadDraft(data.slots[index]); setNotice(""); setError("");
-            }}>Slot {index + 1}<small>{data.slots[index]?.name ?? "Unavailable"}</small></button>)}
+            }}>Slot {index + 1}<small>{data.slots[index]?.name ?? "Unavailable"}</small>
+            <small>{row === index ? "Selected" : ""}{row === index && data.running?.slot === index ? " · " : ""}{data.running?.slot === index ? "Running" : ""}</small></button>)}
         </nav>
         <p className="fx-running" role="status">{data.running
           ? `${data.running.active ? "Running" : "Suspended / inactive"}: slot ${data.running.slot + 1} · ${data.running.definition.name}${matchingRun ? "" : " (another slot)"}.`
@@ -372,33 +375,9 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
         {savedErrors.length > 0 && <p className="fx-warnings">Start saved slot unavailable: {savedErrors.join(" ")}</p>}
         {!savedParticipantCount && <p className="fx-warnings">Start saved slot unavailable: saved selection has no participants.
           Choose All or Odd, or edit the fixture order and Save first.</p>}
-        <footer>
-          <button type="button" disabled={!canSave} onClick={() => void perform(
-            () => saveFxSlot(track, page, row, draft, false, component), "Saved for next launch. Running snapshot unchanged.", true,
-          )}>Save</button>
-          <button type="button" disabled={!canSave || !canRun || !participants.length} onClick={() => void perform(
-            () => saveFxSlot(track, page, row, draft, true, component),
-            `Saved and applied in ${preview ? "PREVIEW (staged)" : "LIVE"}.`, true,
-          )}>Save &amp; Apply now</button>
-          <button type="button" disabled={!canRun || savedErrors.length > 0 || !savedParticipantCount} onClick={() => void perform(
-            () => startFxSlot(track, page, row, component), `Started saved slot ${row + 1}. Unsaved draft was not applied.`,
-          )}>Start saved slot {row + 1}</button>
-          <button type="button" disabled={busy || !contextReady || !data.running} onClick={() => void perform(
-            () => stopFxFamily(track, page, component), `Stopped ${family.name} in ${preview ? "PREVIEW" : "LIVE"}; saved slots unchanged.`,
-          )}>Stop {family.name} family</button>
-          <button type="button" disabled={busy || !contextReady || !matchingRun} onClick={() => {
-            if (dirty && !window.confirm("Replace unsaved draft and saved slot with current running FX?")) return;
-            void perform(() => storeCurrentFx(track, page, row, component), "Current FX stored. Base / scene values were not captured.", true);
-          }}>Store current FX in this slot</button>
-          <button type="button" disabled={busy || !connected} onClick={() => {
-            if (window.confirm(`Reset slot ${row + 1} to factory? Saved edits and this draft will be replaced; running FX stays unchanged.`))
-              void perform(() => resetFxSlot(track, page, row, component), "Factory definition restored; running snapshot unchanged.", true);
-          }}>Reset to factory</button>
-        </footer>
         <p className="muted">Start uses the saved slot, never this draft, and does not toggle off. Store current FX requires
           this selected slot to be running in the current context. Inactive / incompatible strips and movement admission
-          are validated by the backend; a rejected action is shown above.</p>
+          are validated by the backend; a rejected action is shown beside the buttons.</p>
       </>}
-    </div>
-  </div>;
+  </DialogFrame>;
 }

@@ -2,25 +2,245 @@
   "pads": [
     {
       "pad": 0,
-      "scene": "all-blue",
+      "scene": "booth-standard",
       "colour": "blue"
     },
     {
       "pad": 1,
-      "scene": "test-scene-fast",
-      "colour": "cyan"
+      "scene": "deep-blue-floor",
+      "colour": "blue"
     },
     {
       "pad": 2,
-      "scene": "red-green",
-      "colour": "green"
+      "scene": "cyan-cross",
+      "colour": "cyan"
+    },
+    {
+      "pad": 3,
+      "scene": "magenta-cross",
+      "colour": "magenta"
+    },
+    {
+      "pad": 4,
+      "scene": "red-pressure",
+      "colour": "red"
+    },
+    {
+      "pad": 5,
+      "scene": "cold-white-hit",
+      "colour": "white"
+    },
+    {
+      "pad": 6,
+      "scene": "floor-wide-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 7,
+      "scene": "floor-near-magenta",
+      "colour": "magenta"
+    },
+    {
+      "pad": 8,
+      "scene": "opposite-diagonal",
+      "colour": "orange"
+    },
+    {
+      "pad": 9,
+      "scene": "disco-ball-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 10,
+      "scene": "disco-ball-white",
+      "colour": "white"
+    },
+    {
+      "pad": 11,
+      "scene": "split-balls",
+      "colour": "yellow"
+    },
+    {
+      "pad": 12,
+      "scene": "ambient-purple",
+      "colour": "purple"
+    },
+    {
+      "pad": 13,
+      "scene": "ambient-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 14,
+      "scene": "dark-rings",
+      "colour": "mint"
+    },
+    {
+      "pad": 15,
+      "scene": "beam-blackout",
+      "colour": "mint"
+    },
+    {
+      "pad": 16,
+      "scene": "booth-drop-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 17,
+      "scene": "booth-drop-white",
+      "colour": "white"
+    },
+    {
+      "pad": 18,
+      "scene": "full-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 19,
+      "scene": "full-magenta",
+      "colour": "magenta"
+    },
+    {
+      "pad": 20,
+      "scene": "drop-white",
+      "colour": "white"
+    },
+    {
+      "pad": 21,
+      "scene": "drop-red",
+      "colour": "red"
+    },
+    {
+      "pad": 22,
+      "scene": "strobe-blue",
+      "colour": "white"
+    },
+    {
+      "pad": 23,
+      "scene": "strobe-white-full",
+      "colour": "white"
     }
   ],
   "sequence_pads": [
     {
-      "pad": 4,
-      "sequence": "test",
+      "pad": 0,
+      "sequence": "blue-breathe",
+      "colour": "blue"
+    },
+    {
+      "pad": 1,
+      "sequence": "purple-breathe",
+      "colour": "purple"
+    },
+    {
+      "pad": 2,
+      "sequence": "wide-near-cycle",
       "colour": "green"
+    },
+    {
+      "pad": 3,
+      "sequence": "cross-swap",
+      "colour": "cyan"
+    },
+    {
+      "pad": 4,
+      "sequence": "diagonal-pulse",
+      "colour": "orange"
+    },
+    {
+      "pad": 5,
+      "sequence": "blue-magenta-8",
+      "colour": "magenta"
+    },
+    {
+      "pad": 6,
+      "sequence": "disco-ball-drift",
+      "colour": "yellow"
+    },
+    {
+      "pad": 7,
+      "sequence": "floor-tour-slow",
+      "colour": "green"
+    },
+    {
+      "pad": 8,
+      "sequence": "dark-to-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 9,
+      "sequence": "red-pressure-loop",
+      "colour": "red"
+    },
+    {
+      "pad": 10,
+      "sequence": "techno-ab",
+      "colour": "magenta"
+    },
+    {
+      "pad": 11,
+      "sequence": "fast-cross",
+      "colour": "cyan"
+    },
+    {
+      "pad": 12,
+      "sequence": "blue-hit-loop",
+      "colour": "blue"
+    },
+    {
+      "pad": 13,
+      "sequence": "red-hit-loop",
+      "colour": "red"
+    },
+    {
+      "pad": 14,
+      "sequence": "white-punctuation",
+      "colour": "white"
+    },
+    {
+      "pad": 15,
+      "sequence": "booth-energy-loop",
+      "colour": "cyan"
+    },
+    {
+      "pad": 16,
+      "sequence": "build-blue",
+      "colour": "blue"
+    },
+    {
+      "pad": 17,
+      "sequence": "build-red",
+      "colour": "red"
+    },
+    {
+      "pad": 18,
+      "sequence": "drop-blue-one",
+      "colour": "blue"
+    },
+    {
+      "pad": 19,
+      "sequence": "drop-red-one",
+      "colour": "red"
+    },
+    {
+      "pad": 20,
+      "sequence": "drop-booth-one",
+      "colour": "cyan"
+    },
+    {
+      "pad": 21,
+      "sequence": "strobe-blue-burst",
+      "colour": "white"
+    },
+    {
+      "pad": 22,
+      "sequence": "strobe-white-burst",
+      "colour": "white"
+    },
+    {
+      "pad": 23,
+      "sequence": "peak-cycle",
+      "colour": "orange"
     }
   ]
 }

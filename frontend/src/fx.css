@@ -1,7 +1,4 @@
-.fx-dialog { width: min(940px, 94vw); }
 .fx-dialog p { line-height: 1.45; }
-.fx-dialog .fx-context { padding: 10px; border: 1px solid #65d8af; font-weight: 700; }
-.fx-dialog .fx-context.preview { border-color: #ffb454; color: #ffcb82; }
 .fx-fields { border: 0; padding: 0; min-width: 0; display: grid; gap: 12px; }
 .fx-slots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .fx-slots button { display: grid; gap: 5px; padding: 10px 6px; overflow-wrap: anywhere; }

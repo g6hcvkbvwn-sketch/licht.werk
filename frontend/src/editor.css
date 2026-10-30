@@ -1,4 +1,3 @@
-.show-dialog.scene-editor { width: min(1540px, 96vw); }
 .editor-table-scroll { overflow: auto; max-width: 100%; }
 .editor-table { border-collapse: collapse; width: 100%; font-size: .85rem; }
 .editor-table th, .editor-table td { min-width: 150px; padding: 10px; border: 1px solid #454552; vertical-align: top; }
@@ -20,3 +19,15 @@
 .editor-live-scope { border-top: 1px solid #454552; margin-top: 10px; padding-top: 8px; }
 .editor-live-options { display: flex; flex-wrap: wrap; gap: 10px; }
 .editor-invalid { outline: 1px solid #fb7185; }
+.scope-row { display: flex; flex-wrap: wrap; gap: 6px 18px; border: 1px solid #454552; border-radius: 6px; margin: 8px 0; }
+.scope-row label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 1rem; }
+.dialog-body .compare-toggle { display: flex; align-items: center; gap: 8px; }
+.family-toggle { background: none; border: 0; color: inherit; font: inherit; font-weight: bold; text-align: left; cursor: pointer; padding: 0; min-height: 0; }
+.editor-summary { color: #b8b8c6; font-size: .8rem; }
+.scene-meta > summary, .sequence-live > summary { cursor: pointer; font-weight: bold; margin-bottom: 6px; }
+.dialog-body .editor-table-scroll { max-height: 62vh; overflow: auto; }
+.editor-table thead th { position: sticky; top: 0; z-index: 3; }
+.editor-table tbody th { position: sticky; left: 0; z-index: 2; box-shadow: 2px 0 0 #454552; }
+.editor-table thead th:first-child { left: 0; z-index: 4; }
+.editor-table th, .editor-table td { min-width: 130px; }
+.editor-table tbody th { min-width: 110px; }

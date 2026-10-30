@@ -5,6 +5,7 @@ import {
   type FixtureInfo, type GroupInfo, type RoomDocument, type Scene, type Apc40Strip,
 } from "./api";
 import { BeatField, NumberField, validNumber } from "./EditorFields";
+import DialogFrame from "./DialogFrame";
 import SceneTable from "./SceneTable";
 import {
   BEATS, editorFamilies, editorScopes, familyConflicts, familyPresent, newShowId, scopeValues, type EditorScope,
@@ -19,6 +20,7 @@ export interface SceneDialogProps {
 }
 
 export default function SceneDialog({ scene, pad, onClose, onSaved }: SceneDialogProps) {
+  const [compareAll, setCompareAll] = useState(false);
   const [draft, setDraft] = useState<Scene>(() => structuredClone(scene ?? {
     id: newShowId(), name: "", fade_seconds: 0, fade_timing: "beats", fade_beats: 1, fixtures: {}, groups: {}, positions: {},
   }));
@@ -35,6 +37,8 @@ export default function SceneDialog({ scene, pad, onClose, onSaved }: SceneDialo
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [persisted, setPersisted] = useState(!!scene);
+  const [preview, setPreview] = useState(false);
+  const [baseline, setBaseline] = useState(() => JSON.stringify(draft));
   const [colours, setColours] = useState(["blue", "green", "red", "amber", "purple", "cyan", "white"]);
   useEffect(() => {
     let active = true;
@@ -45,6 +49,7 @@ export default function SceneDialog({ scene, pad, onClose, onSaved }: SceneDialo
         const scopes = editorScopes(f, g, apc.strips);
         setSelected(new Set(scopes.filter((s) => Object.keys(scopeValues(draft, s)).length
           || (!s.group && !!draft.positions?.[s.id])).map((s) => s.key)));
+        setPreview(status.preview_active);
         setSource(status.preview_active ? "PREVIEW logical state (not live)" : "LIVE logical state (before master / blackout / FX)");
         if (pad !== undefined) {
           const assignedColour = apc.pads.find((p) => p.pad === pad)?.scene_colour;
@@ -112,7 +117,7 @@ export default function SceneDialog({ scene, pad, onClose, onSaved }: SceneDialo
       groups: Object.fromEntries(Object.entries(draft.groups).filter(([, values]) => Object.keys(values).length)),
       fixtures: Object.fromEntries(Object.entries(draft.fixtures).filter(([, values]) => Object.keys(values).length)),
     }, !persisted);
-    setPersisted(true); setDraft(stored); setSaved(true);
+    setPersisted(true); setDraft(stored); setBaseline(JSON.stringify(stored)); setSaved(true);
     if (pad !== undefined) await assignApc40Pad(pad, stored.id, colour);
     onSaved?.();
     if (apply) await recallScene(stored.id);
@@ -156,47 +161,63 @@ export default function SceneDialog({ scene, pad, onClose, onSaved }: SceneDialo
     ...Object.keys(draft.fixtures).filter((id) => !fixtures.some((f) => f.id === id)),
     ...Object.keys(draft.groups).filter((id) => !groups.some((g) => g.id === id)),
   ];
-  return <div className="dialog-backdrop" onClick={onClose}>
-    <section className="show-dialog scene-editor" role="dialog" aria-modal="true" aria-labelledby="scene-dialog-title" onClick={(e) => e.stopPropagation()}>
-      <header><h2 id="scene-dialog-title">{scene ? "Edit scene" : "Create scene"}{pad !== undefined ? ` · pad ${pad + 1}` : ""}</h2><button onClick={onClose}>Close</button></header>
-      <p className="muted">Editing does not recall a scene. Save affects the next launch; Apply now recalls it explicitly. You can still adjust fixtures manually after launching.</p>
-      {pad !== undefined && !scene && <label>Assign an existing scene<select value={existing} onChange={(e) => setExisting(e.target.value)}>
-        <option value="">Create new below</option>{scenes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-      </select></label>}
-      <form noValidate onSubmit={(e) => { e.preventDefault(); void perform(async () => {
-        if (existing && pad !== undefined) { await assignApc40Pad(pad, existing, colour); onSaved?.(); onClose(); }
-        else await save();
-      }); }}>
-        <fieldset disabled={busy}>
-          <label>Name<input required={!existing} maxLength={80} aria-invalid={!draft.name.trim()} value={draft.name} onChange={(e) => change({ ...draft, name: e.target.value })} /></label>
-          <label>Incoming fade unit<select value={draft.fade_timing ?? "seconds"} onChange={(e) =>
-            change({ ...draft, fade_timing: e.target.value as "seconds" | "beats" })}>
-            <option value="beats">Beats · follows tempo</option><option value="seconds">Seconds · legacy values preserved</option>
-          </select></label>
-          {(draft.fade_timing ?? "seconds") === "beats"
-            ? <BeatField label="Incoming fade" cut value={draft.fade_beats ?? 1} onChange={(fade_beats) => change({ ...draft, fade_beats })} />
-            : <NumberField label="Incoming fade" unit="s" max={600} value={draft.fade_seconds} onChange={(fade_seconds) => change({ ...draft, fade_seconds })} />}
-          {pad !== undefined && <label>Pad colour<select value={colour} onChange={(e) => setColour(e.target.value)}>
-            {colours.map((c) => <option key={c}>{c}</option>)}
-          </select></label>}
-          {!existing && <>
-            <div className="show-actions"><button type="button" disabled={!room || !scopes.some((s) => Object.keys(scopeValues(draft, s)).length || (!s.group && draft.positions?.[s.id]))}
-              onClick={() => void perform(capture)}>Capture as-is · selected fields</button>
-              <small>Captures logical values only, not master / blackout / FX. Differing group values become individual entries.</small>
-            </div><small className="muted">Source: {source}. Haze is opt-in.</small>
-            {room ? <SceneTable draft={draft} scopes={scopes} room={room} selected={selected} onSelect={select} onChange={change} /> : <p>Loading fixtures…</p>}
-            {!!unknown.length && <div role="alert" className="editor-warning">Saved entries not in the current patch are retained: {unknown.join(", ")}.</div>}
-            {!!validation.length && <div className="editor-error" role="status">{validation.map((message) => <p key={message}>{message}</p>)}</div>}
-          </>}
-          <footer><button type="submit" disabled={!existing && !canSave}>{saved ? "Saved" : existing ? "Assign scene" : "Save"}</button>
-            {!existing && <button type="button" disabled={!canSave} onClick={() => void perform(() => save(true))}>Save & Apply now</button>}
-            {pad !== undefined && <button type="button" onClick={() => void perform(async () => { await clearApc40Pad(pad); onSaved?.(); onClose(); })}>Unassign pad</button>}
-            {persisted && <button type="button" className="danger" onClick={() => {
-              if (window.confirm(`Delete "${draft.name}" everywhere?`)) void perform(async () => { await deleteScene(draft.id); onSaved?.(); onClose(); });
-            }}>Delete scene everywhere</button>}</footer>
-        </fieldset>
-      </form>
-      {error && <div role="alert" className="banner error">{error}</div>}
-    </section>
-  </div>;
+  const dirty = JSON.stringify(draft) !== baseline;
+  const target = preview ? "Preview" : "Live";
+  const deleteScope = persisted && <button type="button" className="danger" disabled={busy} onClick={() => {
+    if (window.confirm(`Delete "${draft.name}" everywhere?`)) void perform(async () => { await deleteScene(draft.id); onSaved?.(); onClose(); });
+  }}>Delete scene everywhere</button>;
+  const unassign = pad !== undefined && <button type="button" disabled={busy}
+    onClick={() => void perform(async () => { await clearApc40Pad(pad); onSaved?.(); onClose(); })}>Unassign pad</button>;
+  return <DialogFrame id="scene-dialog" size="wide" dirty={dirty && !existing} busy={busy} onClose={onClose}
+    title={`${scene ? "Edit scene" : "Create scene"}${scene ? ` · ${scene.name}` : ""}${pad !== undefined ? ` · pad ${pad + 1}` : ""}`}
+    context={`Editing a scene definition. Nothing is recalled until you apply it.`} preview={preview} saveNote
+    status={error ? <div role="alert" className="banner error">{error}</div> : undefined}
+    footer={<>
+      <button type="submit" form="scene-form" disabled={busy || (!existing && !canSave)}>
+        {saved ? "Saved" : existing ? "Assign scene" : "Save for next launch"}</button>
+      {!existing && <button type="button" disabled={busy || !canSave} onClick={() => void perform(() => save(true))}>
+        Save &amp; apply to {target}</button>}
+      {!existing && !canSave && !!validation.length && <small className="dialog-hint editor-error">
+        Save unavailable: {validation[0]}{validation.length > 1 ? ` (+${validation.length - 1} more above)` : ""}</small>}
+      {(unassign || deleteScope) && <details className="dialog-more"><summary>More</summary>
+        <div className="dialog-more-menu">{unassign}{deleteScope}</div></details>}
+    </>}>
+    {pad !== undefined && !scene && <label>Assign an existing scene<select value={existing} onChange={(e) => setExisting(e.target.value)}>
+      <option value="">Create new below</option>{scenes.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+    </select></label>}
+    <form id="scene-form" noValidate onSubmit={(e) => { e.preventDefault(); void perform(async () => {
+      if (existing && pad !== undefined) { await assignApc40Pad(pad, existing, colour); onSaved?.(); onClose(); }
+      else await save();
+    }); }}>
+      <fieldset disabled={busy}>
+        <details className="scene-meta" open>
+          <summary>Scene details · {draft.name.trim() || "unnamed"} · fade {(draft.fade_timing ?? "seconds") === "beats" ? `${draft.fade_beats ?? 1} beats` : `${draft.fade_seconds} s`}</summary>
+        <label>Name<input required={!existing} maxLength={80} aria-invalid={!draft.name.trim()} value={draft.name} onChange={(e) => change({ ...draft, name: e.target.value })} /></label>
+        <label>Incoming fade unit<select value={draft.fade_timing ?? "seconds"} onChange={(e) =>
+          change({ ...draft, fade_timing: e.target.value as "seconds" | "beats" })}>
+          <option value="beats">Beats · follows tempo</option><option value="seconds">Seconds · legacy values preserved</option>
+        </select></label>
+        {(draft.fade_timing ?? "seconds") === "beats"
+          ? <BeatField label="Incoming fade" cut value={draft.fade_beats ?? 1} onChange={(fade_beats) => change({ ...draft, fade_beats })} />
+          : <NumberField label="Incoming fade" unit="s" max={600} value={draft.fade_seconds} onChange={(fade_seconds) => change({ ...draft, fade_seconds })} />}
+        {pad !== undefined && <label>Pad colour<select value={colour} onChange={(e) => setColour(e.target.value)}>
+          {colours.map((c) => <option key={c}>{c}</option>)}
+        </select></label>}
+        </details>
+        {!existing && <>
+          <div className="show-actions"><button type="button" disabled={!room || !scopes.some((s) => Object.keys(scopeValues(draft, s)).length || (!s.group && draft.positions?.[s.id]))}
+            onClick={() => void perform(capture)}>Capture selected controls</button>
+            <small>Captures logical values only, not master / blackout / FX. Differing group values become individual entries.</small>
+          </div><small className="muted">Source: {source}. Haze is opt-in.</small>
+          <fieldset className="scope-row"><legend>Participating fixtures and groups (controller track order)</legend>
+            {scopes.map((scope) => <label key={scope.key}><input type="checkbox" checked={selected.has(scope.key)}
+              onChange={(e) => select(scope, e.target.checked)} />{scope.name}</label>)}</fieldset>
+          <label className="compare-toggle"><input type="checkbox" checked={compareAll} onChange={(e) => setCompareAll(e.target.checked)} />Show all fixtures and groups</label>
+          {room ? <SceneTable draft={draft} scopes={compareAll ? scopes : scopes.filter((s) => selected.has(s.key) || Object.keys(scopeValues(draft, s)).length || (!s.group && draft.positions?.[s.id]))} room={room} selected={selected} onSelect={select} onChange={change} /> : <p>Loading fixtures…</p>}
+          {!!unknown.length && <div role="alert" className="editor-warning">Saved entries not in the current patch are retained: {unknown.join(", ")}.</div>}
+          {!!validation.length && <div className="editor-error" role="status">{validation.map((message) => <p key={message}>{message}</p>)}</div>}
+        </>}
+      </fieldset>
+    </form>
+  </DialogFrame>;
 }

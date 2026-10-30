@@ -83,7 +83,7 @@ def build_router(
                 preview_strobe_hz=strobe_hz(fixture, editing.get("strobe")) if enabled else None,
                 live_beam=[live_hit.x, live_hit.y] if live_hit and enabled else None,
                 preview_beam=[preview_hit.x, preview_hit.y] if preview_hit and enabled else None,
-                shape="rectangle" if fixture.patch.definition == "cameo-thunder-wash-100-rgb" else None,
+                shape={"cameo-thunder-wash-100-rgb": "rectangle", "cameo-q-spot-15-rgbw-bk": "spot"}.get(fixture.patch.definition),
                 guard_reason=guard.reason(fixture_id, editing["pan"], editing["tilt"], live=False) if guard and moving_head else None,
                 setup_override=guard.setup_override(fixture_id) if guard and moving_head else False,
                 live_haze={name: output[name] for name in ("pump", "fan")}

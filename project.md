@@ -455,7 +455,7 @@ Original MVP acceptance: app starts in simulation; real output only after ARM; L
 
 ### Approved RFC updates - 29 October 2026
 
-The consolidated decisions in `rfc.md` update the existing milestones rather than introducing a new transport or lighting engine:
+The consolidated RFC decisions (all slices A-D accomplished; `rfc.md` has been emptied) update the existing milestones rather than introducing a new transport or lighting engine:
 - Automatic configured output in startup blackout, manual Retry, no ARM step.
 - APC40 layout/labels, per-strip FX stop, running/editing indications, 128 BPM beat feedback and left-column device knobs.
 - Multi-zone permissions with undefined areas excluded, static-target exceptions, independent group/single settings and preview-safe persistence.

@@ -34,7 +34,7 @@ const PAGES: [Page, string][] = [
   ["live", "Fixtures"],
   ["positions", "Positions"],
   ["midi", "MIDI"],
-  ["setup", "Setup"],
+  ["setup", "Dimensions"],
   ["diagnostics", "Diagnostics"],
 ];
 
@@ -116,12 +116,6 @@ export default function App() {
   // The Controller page shows scene, master and blackout on the controller itself.
   const onController = page === "controller";
 
-  const movingHeads = fixtures?.filter((f) => f.attributes.includes("pan")) ?? [];
-  // Groups made only of moving heads (e.g. "moving-heads") can be assigned zones as a whole.
-  const headGroups = [...new Set(movingHeads.flatMap((f) => f.groups))]
-    .map((name) => ({ name, members: (fixtures ?? []).filter((f) => f.groups.includes(name)) }))
-    .filter((g) => g.members.every((f) => f.attributes.includes("pan")))
-    .map((g) => ({ name: g.name, members: g.members.map((f) => f.id) }));
   const panel = (fixture: FixtureInfo) => (
     <FixturePanel
       key={fixture.id}
@@ -224,7 +218,7 @@ export default function App() {
         <ShowPanel onScenesChanged={() => void getScenes().then(setScenes).catch(() => {})} />
       </>}
       {page === "setup" && <SetupPanel />}
-      {page === "midi" && <MidiPanel fixtures={fixtures ?? []} scenes={scenes} />}
+      {page === "midi" && <MidiPanel />}
 
       {(page === "live" || page === "positions") && fixtures === null && (
         <p className="muted">
@@ -259,12 +253,7 @@ export default function App() {
 
       {page === "positions" && fixtures !== null && (
         <>
-          <PositioningPanel refreshKey={fixtures} groups={headGroups} onMoved={() => void run(async () => undefined, true)} />
-          {movingHeads.length === 0 ? (
-            <p className="muted">No moving heads patched.</p>
-          ) : (
-            movingHeads.map(panel)
-          )}
+          <PositioningPanel refreshKey={fixtures} onMoved={() => void run(async () => undefined, true)} />
         </>
       )}
     </main>

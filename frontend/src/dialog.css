@@ -1,0 +1,44 @@
+.show-dialog.dialog-frame { display: flex; flex-direction: column; padding: 0; overflow: hidden; max-height: min(92vh, 960px); }
+.show-dialog.dialog-size-compact { width: min(520px, 94vw); }
+.show-dialog.dialog-size-medium { width: min(940px, 94vw); }
+.show-dialog.dialog-size-wide { width: min(1540px, 96vw); }
+.dialog-frame > header { padding: 14px 20px; border-bottom: 1px solid #454552; flex: none; }
+.dialog-frame > header h2 { font-size: 1.15rem; overflow-wrap: anywhere; }
+.dialog-context { margin: 0; padding: 8px 20px; border-bottom: 1px solid #454552; flex: none; color: #83eac1; }
+.dialog-context strong { margin-right: 8px; letter-spacing: .04em; }
+.dialog-context.preview { color: #ffcb82; background: #2a2418; }
+.dialog-dirty { color: #f9d888; font-style: normal; font-weight: 700; }
+.dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 20px; display: grid; gap: 12px; align-content: start; }
+.dialog-body > * { min-width: 0; }
+.dialog-body form { display: grid; gap: 12px; }
+.dialog-frame .dialog-footer { flex: none; margin: 0; padding: 10px 20px 12px; border-top: 1px solid #5b5b6c; background: #14141a;
+  display: grid; gap: 6px; position: relative; }
+.dialog-status .banner, .dialog-status p { margin: 0; }
+.dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dialog-actions > .dialog-hint { flex-basis: 100%; margin: 0; }
+.dialog-more { position: relative; margin: 0 !important; margin-left: auto !important; }
+.dialog-more > summary { cursor: pointer; min-height: 36px; padding: 6px 12px; border: 1px solid #666; border-radius: 6px; list-style: none; }
+.dialog-more[open] > .dialog-more-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 2; display: grid; gap: 6px;
+  min-width: 240px; padding: 10px; background: #22222d; border: 1px solid #777; border-radius: 8px; }
+/* Common form grid: label column on the left, every input on one vertical line. */
+.dialog-body label:has(> input:not([type=checkbox]):not([type=color]):not([type=radio]), > select, > textarea) {
+  display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 240px); justify-content: start; align-items: center; column-gap: 16px; margin: 12px 0; }
+.dialog-body .editor-table label:has(> input, > select), .dialog-body .fx-number { display: block; }
+.dialog-body label > input:not([type=checkbox]):not([type=color]):not([type=radio]), .dialog-body label > select { min-width: 0; width: 100%; max-width: 240px; box-sizing: border-box; }
+.dialog-body .editor-table label > input:not([type=checkbox]):not([type=color]) { width: auto; }
+@media (max-width: 600px) { .dialog-body label:has(> input:not([type=checkbox]), > select) { grid-template-columns: 1fr; } }
+.dialog-frame button:focus-visible, .dialog-frame input:focus-visible, .dialog-frame select:focus-visible,
+.dialog-frame summary:focus-visible { outline: 2px solid #65d8af; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .dialog-frame > header, .dialog-body, .dialog-context, .dialog-frame .dialog-footer { padding-left: 12px; padding-right: 12px; }
+}
+.dialog-frame .dialog-more { border: 0; padding: 0; }
+.dialog-frame .dialog-more > summary { font-weight: normal; }
+.dialog-body fieldset { min-width: 0; }
+.dialog-body .editor-table-scroll { overflow-x: auto; max-width: 100%; }
+.dialog-body .editor-table tbody th, .dialog-body .editor-table thead th:first-child { position: sticky; left: 0; z-index: 1; }
+.dialog-body .editor-number { grid-template-columns: minmax(150px, 240px) minmax(0, 240px) !important; gap: 4px 16px !important; justify-content: start; margin: 12px 0; }
+.dialog-body .editor-number > .editor-error { grid-column: 2; }
+.dialog-body .editor-table .editor-number { grid-template-columns: minmax(0, 1fr) !important; margin: 6px 0; }
+.dialog-body .editor-table .editor-number > .editor-error { grid-column: 1; }
+.editor-table .editor-number input { width: 100%; max-width: 110px; box-sizing: border-box; }

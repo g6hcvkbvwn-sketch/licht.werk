@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { RoomDocument, Scene, ScenePosition } from "./api";
 import { NumberField } from "./EditorFields";
 import ScenePositionEditor from "./ScenePositionEditor";
@@ -12,6 +13,12 @@ export default function SceneTable({ draft, scopes, room, selected, onSelect, on
   onSelect: (scope: EditorScope, included: boolean) => void; onChange: (scene: Scene) => void;
 }) {
   const families = editorFamilies(scopes);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleFamily = (family: string) => setCollapsed((current) => {
+    const next = new Set(current);
+    if (!next.delete(family)) next.add(family);
+    return next;
+  });
   const setValues = (scope: EditorScope, values: Record<string, number>, next = draft) => onChange({
     ...next, [scope.group ? "groups" : "fixtures"]: { ...(scope.group ? next.groups : next.fixtures), [scope.id]: values },
   });
@@ -31,16 +38,23 @@ export default function SceneTable({ draft, scopes, room, selected, onSelect, on
     <caption className="muted">Controller track order · select participating columns, then the fields to store. Unselected fields stay unchanged.</caption>
     <thead><tr><th scope="col">Scene controls</th>{scopes.map((scope) => <th scope="col" key={scope.key} className={scope.group ? "editor-group" : ""}>
       <label><input type="checkbox" checked={selected.has(scope.key)} onChange={(e) => onSelect(scope, e.target.checked)} />
-        {scope.name}{scope.group ? " · group" : ""}</label>
+        {scope.name}</label>
     </th>)}</tr></thead>
     <tbody>{Object.entries(families).map(([family, fields]) => <tr key={family}>
-      <th scope="row">{family}</th>{scopes.map((scope) => {
+      <th scope="row"><button type="button" className="family-toggle" aria-expanded={!collapsed.has(family)}
+        onClick={() => toggleFamily(family)}>{collapsed.has(family) ? "▸" : "▾"} {family}</button></th>{scopes.map((scope) => {
         const attrs = scopeAttributes(scope).filter((a) => fields.includes(a));
         if (!attrs.length) return <td key={scope.key} aria-label={`${scope.name}: ${family} unavailable`}>—</td>;
         const values = scopeValues(draft, scope);
         const included = familyPresent(draft, scope, fields);
         const conflicts = familyConflicts(draft, scope, fields, scopes);
         const participating = selected.has(scope.key);
+        if (collapsed.has(family)) {
+          const stored = Object.entries(values).filter(([a]) => fields.includes(a));
+          const summary = fields.includes("pan") && draft.positions?.[scope.id] ? "named position"
+            : stored.length ? stored.map(([a, v]) => attrs.length === 1 ? `${Math.round(v * 100)}%` : `${attributeLabel(a)} ${Math.round(v * 100)}%`).join(", ") : "not stored";
+          return <td key={scope.key} className={`${scope.group ? "editor-group " : ""}editor-summary`}>{summary}</td>;
+        }
         const isPosition = fields.includes("pan");
         const named = !scope.group && !!draft.positions?.[scope.id];
         const prefix = family.startsWith("Ring colour") ? "ring_" : "";
@@ -68,7 +82,7 @@ export default function SceneTable({ draft, scopes, room, selected, onSelect, on
         return <td key={scope.key} className={`${scope.group ? "editor-group " : ""}${participating ? "" : "editor-inactive"}`}>
           <fieldset disabled={!participating} style={{ border: 0, padding: 0, margin: 0 }}>
             <label><input type="checkbox" checked={included} disabled={!included && !!conflicts.length}
-              onChange={toggle} />Store {family.toLowerCase()}</label>
+              onChange={toggle} aria-label={`${scope.name}: store ${family.toLowerCase()}`} /></label>
             {!!conflicts.length && <div className="editor-warning" role={included ? "alert" : undefined}>
               {included ? "Legacy overlap: " : "Already set on "}{conflicts.map((s) => s.name).join(", ")}.
               {included && <small>Both saved values are retained until you choose.</small>}
@@ -103,11 +117,11 @@ export default function SceneTable({ draft, scopes, room, selected, onSelect, on
                       [a, parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255])) })} />)}</div>
               </>}
               {!(isPosition && named) && attrs.map((a) => <div key={a}>
-                <label><input type="checkbox" checked={a in values} onChange={(e) => {
+                {attrs.length > 1 && <label><input type="checkbox" checked={a in values} onChange={(e) => {
                   const next = { ...values };
                   if (e.target.checked) next[a] = scope.members[0]?.state[a] ?? 0; else delete next[a];
                   setValues(scope, next);
-                }} />{attributeLabel(a)}</label>
+                }} />{attributeLabel(a)}</label>}
                 {a in values && <NumberField label={`${scope.name} ${attributeLabel(a)}`} value={values[a] * 100}
                   onChange={(value) => setValues(scope, { ...values, [a]: value / 100 })} />}
               </div>)}

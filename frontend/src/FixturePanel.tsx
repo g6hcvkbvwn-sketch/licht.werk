@@ -3,21 +3,28 @@ import type { FixtureInfo } from "./api";
 
 const COLOR_ATTRIBUTES = ["red", "green", "blue"] as const;
 
-function toHex(state: Record<string, number>): string {
+function toHex(state: Record<string, number>, prefix = ""): string {
   return (
     "#" +
     COLOR_ATTRIBUTES.map((name) =>
-      Math.round((state[name] ?? 0) * 255)
+      Math.round((state[prefix + name] ?? 0) * 255)
         .toString(16)
         .padStart(2, "0"),
     ).join("")
   );
 }
 
-function fromHex(hex: string): Record<string, number> {
+function fromHex(hex: string, prefix = ""): Record<string, number> {
   const n = parseInt(hex.slice(1), 16);
-  return { red: ((n >> 16) & 255) / 255, green: ((n >> 8) & 255) / 255, blue: (n & 255) / 255 };
+  return {
+    [`${prefix}red`]: ((n >> 16) & 255) / 255,
+    [`${prefix}green`]: ((n >> 8) & 255) / 255,
+    [`${prefix}blue`]: (n & 255) / 255,
+  };
 }
+
+const MOVEMENT = ["pan", "tilt", "speed"];
+const RING_SECTIONS = [1, 2, 3, 4, 5, 6];
 
 function label(name: string): string {
   const text = name.replace(/_/g, " ");
@@ -68,10 +75,33 @@ export default function FixturePanel({ fixture, lockedAttributes = [], onChange,
   const [values, setValues] = useState(fixture.state);
   const pending = useRef<Record<string, number>>({});
   const timer = useRef<number | undefined>(undefined);
-  const hasRgb = COLOR_ATTRIBUTES.every((name) => fixture.attributes.includes(name));
-  const sliders = fixture.attributes.filter(
-    (name) => !(hasRgb && (COLOR_ATTRIBUTES as readonly string[]).includes(name)),
+  const [ringIndividual, setRingIndividual] = useState(false);
+  const has = (name: string) => fixture.attributes.includes(name);
+  const hasRgb = COLOR_ATTRIBUTES.every(has);
+  const hasRing = fixture.attributes.some((name) => name.startsWith("ring_"));
+  const hasRingRgb = COLOR_ATTRIBUTES.every((c) => has(`ring_${c}`));
+  const hasSections = RING_SECTIONS.every((n) => COLOR_ATTRIBUTES.every((c) => has(`ring_${n}_${c}`)));
+  const beam = fixture.attributes.filter((name) => !name.startsWith("ring_") && !MOVEMENT.includes(name)
+    && !(hasRgb && (COLOR_ATTRIBUTES as readonly string[]).includes(name)));
+  const movement = MOVEMENT.filter(has);
+  const ringSliders = fixture.attributes.filter((name) => name === "ring_intensity" || name === "ring_strobe");
+  const slider = (name: string) => (
+    <label key={name} className={lockedAttributes.includes(name) ? "locked-field" : ""}>
+      {label(name)}: {Math.round((values[name] ?? 0) * 100)}%{lockedAttributes.includes(name) ? " · LOCKED" : ""}
+      <input type="range" min={0} max={100}
+        disabled={!fixture.enabled || lockedAttributes.includes(name)}
+        value={Math.round((values[name] ?? 0) * 100)}
+        onChange={(e) => update({ [name]: Number(e.target.value) / 100 })} />
+    </label>
   );
+  const picker = (title: string, prefix: string) => {
+    const locked = COLOR_ATTRIBUTES.some((a) => lockedAttributes.includes(prefix + a));
+    return <label key={prefix} className={locked ? "locked-field" : ""}>
+      {title}{locked ? " · LOCKED (scene / sequence)" : ""}
+      <input type="color" disabled={!fixture.enabled || locked} value={toHex(values, prefix)}
+        onChange={(e) => update(fromHex(e.target.value, prefix))} />
+    </label>;
+  };
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -106,30 +136,28 @@ export default function FixturePanel({ fixture, lockedAttributes = [], onChange,
           stop haze. Keep power on for the machine's cooldown; pump off is not shutdown.
         </p>
       )}
-      {hasRgb && (
-        <label className={COLOR_ATTRIBUTES.some((a) => lockedAttributes.includes(a)) ? "locked-field" : ""}>
-          Color{COLOR_ATTRIBUTES.some((a) => lockedAttributes.includes(a)) ? " · LOCKED (scene / sequence)" : ""}
-          <input
-            type="color"
-            disabled={!fixture.enabled || COLOR_ATTRIBUTES.some((a) => lockedAttributes.includes(a))}
-            value={toHex(values)}
-            onChange={(e) => update(fromHex(e.target.value))}
-          />
-        </label>
-      )}
-      {sliders.map((name) => (
-        <label key={name} className={lockedAttributes.includes(name) ? "locked-field" : ""}>
-          {label(name)}: {Math.round((values[name] ?? 0) * 100)}%{lockedAttributes.includes(name) ? " · LOCKED" : ""}
-          <input
-            type="range"
-            min={0}
-            max={100}
-            disabled={!fixture.enabled || lockedAttributes.includes(name)}
-            value={Math.round((values[name] ?? 0) * 100)}
-            onChange={(e) => update({ [name]: Number(e.target.value) / 100 })}
-          />
-        </label>
-      ))}
+      <div className="fixture-groups">
+        <fieldset><legend>{hasRing ? "Beam" : "Controls"}</legend>
+          {hasRgb && picker("Color", "")}
+          {beam.map(slider)}
+        </fieldset>
+        {movement.length > 0 && <fieldset><legend>Movement</legend>{movement.map(slider)}</fieldset>}
+        {hasRing && <fieldset><legend>Ring</legend>
+          {ringSliders.map(slider)}
+          {hasSections && hasRingRgb && <div role="group" aria-label="Ring colour mode" className="segmented">
+            <button type="button" className={!ringIndividual ? "active" : ""} onClick={() => setRingIndividual(false)}>Uniform</button>
+            <button type="button" className={ringIndividual ? "active" : ""} onClick={() => setRingIndividual(true)}>Individual</button>
+          </div>}
+          {(!ringIndividual || !hasSections) && hasRingRgb && picker("Ring colour (all sections)", "ring_")}
+          {ringIndividual && hasSections && <div className="ring-sections">
+            {RING_SECTIONS.map((n) => picker(`Section ${n}`, `ring_${n}_`))}
+          </div>}
+        </fieldset>}
+      </div>
+      <details className="fixture-advanced">
+        <summary>Advanced: raw attributes</summary>
+        {fixture.attributes.map(slider)}
+      </details>
     </section>
   );
 }

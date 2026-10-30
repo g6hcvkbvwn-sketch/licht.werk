@@ -230,6 +230,8 @@ class Apc40Control:
         self._show_dialog_kind: Optional[str] = None
         self._show_dialog_item: Optional[str] = None
         self._show_dialog_pad = 0
+        self._fx_dialog_id = 0
+        self._fx_dialog: Optional[tuple[int, str, int, str]] = None
         self._shift = False
         self._error: Optional[str] = None
         self._settings = {s.track: StripSettings() for s in strips}
@@ -309,6 +311,9 @@ class Apc40Control:
         self._show_dialog_kind = kind
         self._show_dialog_item = item
         self._show_dialog_pad = pad
+
+    def fx_dialog_request(self) -> tuple[int, Optional[tuple[int, str, int, str]]]:
+        return self._fx_dialog_id, self._fx_dialog
 
     def shift_active(self) -> bool:
         return self._shift
@@ -608,10 +613,10 @@ class Apc40Control:
         number, track = event.number, event.channel
         if number == hw.NOTE_SHIFT:
             self._shift = True
-        elif number in (hw.NOTE_UP, hw.NOTE_DOWN) and self._position_track is not None:
-            self._position_mode = "aim" if number == hw.NOTE_UP else "permissions"
-        elif number in (hw.NOTE_LEFT, hw.NOTE_RIGHT):
-            self._show_page = "scenes" if number == hw.NOTE_LEFT else "sequences"
+        elif number in (hw.NOTE_DEVICE_ON_OFF, hw.NOTE_DEVICE_LOCK) and self._position_track is not None:
+            self._position_mode = "aim" if number == hw.NOTE_DEVICE_ON_OFF else "permissions"
+        elif number in (hw.NOTE_DEVICE_LEFT, hw.NOTE_DEVICE_RIGHT):
+            self._show_page = "scenes" if number == hw.NOTE_DEVICE_LEFT else "sequences"
             self._position_track = None
             self._selected = None
             self._fx_open = False
@@ -1097,6 +1102,11 @@ class Apc40Control:
         self._fx_track = track  # the knobs follow the strip last played
         owner = effect_owner(track)
         component = self.fx_component(track, self._fx_type)
+        if self._shift:
+            # SHIFT + FX pad edits that preset slot; it never starts or stops FX.
+            self._fx_dialog_id += 1
+            self._fx_dialog = (track, self._fx_type.value, row, component)
+            return
         running = self._effects.running(owner, self._fx_type, component=component)
         if running is not None and running.preset == row:
             self._effects.stop(owner, self._fx_type, component=component)
@@ -1194,6 +1204,11 @@ class Apc40Control:
                     hw.RING_VOLUME if saturation is not None else hw.RING_OFF
                 )
                 state[("cc", 1, ring)] = round((saturation or 0.0) * 127)
+            in_positions = self._position_track is not None
+            state[("note", 1, hw.NOTE_DEVICE_ON_OFF)] = hw.LED_ON if in_positions and self._position_mode == "aim" else hw.LED_OFF
+            state[("note", 1, hw.NOTE_DEVICE_LOCK)] = hw.LED_ON if in_positions and self._position_mode == "permissions" else hw.LED_OFF
+            state[("note", 1, hw.NOTE_DEVICE_LEFT)] = hw.LED_ON if self._show_page == "scenes" else hw.LED_OFF
+            state[("note", 1, hw.NOTE_DEVICE_RIGHT)] = hw.LED_ON if self._show_page == "sequences" else hw.LED_OFF
             state[("note", 1, hw.NOTE_MASTER)] = (
                 hw.LED_ON if self._service.blackout_active() else hw.LED_OFF
             )

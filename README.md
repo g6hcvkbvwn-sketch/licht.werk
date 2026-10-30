@@ -143,7 +143,7 @@ API: `GET/PUT /api/room`, `PUT/DELETE /api/zones/{id}`, `DELETE /api/targets/{id
 - `GET /api/universes/{universe}` — complete simulated 512-slot buffer
 - `POST /api/commands/set-channel` — diagnostic: set one 1-based DMX address; accepts universe 0–7 (the Botex output labels) and value 0–255
 - `POST /api/output/blackout` — set `{"active": true}` or `{"active": false}`
-- `GET /api/apc40` — on-screen APC40 state (strips, pads, knobs, strobe rate, last hardware input)
+- `GET /api/apc40` — on-screen APC40 state (strips, pads, knobs, strobe rate)
 - `POST /api/apc40/event` — act like the APC40, e.g. `{"kind": "note", "channel": 1, "number": 80, "value": 127}`
 - `PUT /api/apc40/pads/{pad}` — give a scene pad (0–39, top-left = 0) a scene and colour, `{"scene": "test-scene", "colour": "orange"}`; `DELETE /api/apc40/pads/{pad}` clears it
 - `GET /api/preview` — `{"active": true|false}`; `POST /api/preview` with `{"active": true}` starts preview, `{"active": false}` = Go (sends the preview live)
@@ -212,7 +212,7 @@ The APC40 has a fixed logic (see `project.md`, section 6.3): track 1 LED bar, 2 
 
 ### Controller page
 
-The **Controller** page has two tabs, **APC40 MKII** and **Xone:K2**. Until you pick one, it shows the APC40, or the K2 when only the K2 is connected. The on-screen APC40 works like the real one (click buttons and pads, drag knobs and faders); **ASSIGN SCENE PADS** → click a pad → choose scene and colour → Save. "Last hardware input" shows the last message from the real APC40.
+The **Controller** page shows the on-screen APC40 MKII (the Xone:K2 tab is on hold). It works like the real one (click buttons and pads, drag knobs and faders); SHIFT + pad (or an empty pad) opens the scene/sequence editor for that pad. DEVICE < / DEVICE > on the APC40 select the SCENES / SEQUENCES pad pages (their LEDs show the active page).
 
 **Preview mode:** press **PREVIEW** (top bar, the on-screen button, K2 LAYER or APC40 SESSION RECORD). Changes now only go into the preview; the page gets an orange frame. Press **GO** to send everything at once and return to live. Master, blackout, flash and strobe-hold always act live (marked with a red LIVE badge). The **Room map** in the side panel shows each fixture as a dot (left half = live, right half = preview); use **EDIT POSITIONS** to place the fixtures.
 

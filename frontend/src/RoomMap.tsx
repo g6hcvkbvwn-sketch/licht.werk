@@ -7,6 +7,8 @@ import { getRoomMap, placeOnMap, removeFromMap, type MapFixture, type RoomMapSta
  */
 
 const POLL_MS = 400;
+/** Room-y (m) of the point both booth spots aim at, slightly in front of the booth wall centre. */
+const SPOT_TARGET_Y = 0.35;
 const DOT_M = 0.22; // dot radius in metres (scaled with the room for readability)
 // The screen blinks at most this fast (easier on the eyes); the label shows the real rate.
 const MAX_BLINK_HZ = 8;
@@ -80,10 +82,11 @@ export default function RoomMap({ compact = false }: { compact?: boolean }) {
   </div>;
 }
 
-function RoomMonitor({ compact, mode, state, onState }: {
+function RoomMonitor({ compact, mode, state, onState, big = false }: {
   compact: boolean; mode: "live" | "preview"; state: RoomMapState;
-  onState: (state: RoomMapState) => void;
+  onState: (state: RoomMapState) => void; big?: boolean;
 }) {
+  const [enlarged, setEnlarged] = useState(false);
   const [editing, setEditing] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null);
@@ -188,6 +191,28 @@ function RoomMonitor({ compact, mode, state, onState }: {
       return `${x + Math.cos(radians) * ringRadius},${cy + Math.sin(radians) * ringRadius}`;
     };
     const rectangular = f.shape === "rectangle";
+    const spot = f.shape === "spot";
+    // Both booth spots aim at one fixed point just inside the centre of the DJ booth wall.
+    const spotAngle = spot
+      ? Math.atan2(state.depth - SPOT_TARGET_Y - cy, state.width / 2 - x) * 180 / Math.PI : 0;
+    // Fixed emission shapes: spots face the DJ booth (bottom of the map), the wash faces the room centre.
+    const emission = (() => {
+      if (spot) {
+        // Drawn along +x in the rotated spot frame: narrow at the outlet (short end), widening outward.
+        const start = radius * 0.9;
+        const end = start + radius * 2.2;
+        return `${x + start},${cy - radius * 0.2} ${x + start},${cy + radius * 0.2} ${x + end},${cy + radius * 0.9} ${x + end},${cy - radius * 0.9}`;
+      }
+      if (rectangular) {
+        const a = Math.atan2(state.depth / 2 - cy, state.width / 2 - x);
+        const at = (along: number, across: number) =>
+          `${x + Math.cos(a) * along - Math.sin(a) * across},${cy + Math.sin(a) * along + Math.cos(a) * across}`;
+        const near = radius * 0.5;
+        const far = near + radius * 1.8;
+        return [at(near, -radius * 0.45), at(near, radius * 0.45), at(far, radius * 1.3), at(far, -radius * 1.3)].join(" ");
+      }
+      return null;
+    })();
     const beam = (end: [number, number] | null | undefined, colour: string) => {
       if (!end) return null;
       const dx = end[0] - x;
@@ -217,18 +242,28 @@ function RoomMonitor({ compact, mode, state, onState }: {
       >
         <title>{`${f.name} (${x.toFixed(2)} m, ${y.toFixed(2)} m)${f.enabled ? "" : " — disabled"}\n${mode} ${outputText}${f.guard_reason ? `\n${f.guard_reason}` : ""}`}</title>
         {!inactive && beam(projected ? f.preview_beam : f.live_beam, live)}
-        {rectangular ? (
+        <g transform={spot ? `rotate(${spotAngle} ${x} ${cy})` : undefined}>
+        {emission && <polygon points={emission} fill={live} fillOpacity={0.4} stroke={live} strokeOpacity={0.8}
+          strokeWidth={0.02} className="map-emission" />}
+        {spot ? (
+          <rect x={x - radius * 0.9} y={cy - radius * 0.5}
+            width={radius * 1.8} height={radius} fill={live} {...strobeStyle(hz)} />
+        ) : rectangular ? (
           <rect x={x - radius * 1.4} y={cy - radius * 0.45}
             width={radius * 2.8} height={radius * 0.9} fill={live} {...strobeStyle(hz)} />
         ) : (
           <circle cx={x} cy={cy} r={radius} fill={live} {...strobeStyle(hz)} />
         )}
+        </g>
         {hz && (
           <text x={x} y={cy - radius * (ring.length ? 1.9 : 1.25)} className="map-strobe-label" fontSize={radius * 0.85}>
             ⚡ {hzText(hz)}
           </text>
         )}
-        {rectangular
+        {spot
+          ? <rect x={x - radius * 0.9} y={cy - radius * 0.5} width={radius * 1.8} height={radius} className="map-ring"
+              transform={`rotate(${spotAngle} ${x} ${cy})`} />
+          : rectangular
           ? <rect x={x - radius * 1.4} y={cy - radius * 0.45} width={radius * 2.8} height={radius * 0.9} className="map-ring" />
           : <circle cx={x} cy={cy} r={radius} className="map-ring" />}
         {ring.length > 0 && <g role="img" aria-label={`${f.name} ${mode} ring output`}
@@ -265,11 +300,24 @@ function RoomMonitor({ compact, mode, state, onState }: {
   };
 
   return (
+    <>
+    {enlarged && !big && (
+      <div className="dialog-backdrop" onClick={() => setEnlarged(false)}>
+        <div className="monitor-enlarged" role="dialog" aria-label={`${mode} monitor, enlarged`}
+          onClick={(e) => e.stopPropagation()}>
+          <RoomMonitor compact={false} mode={mode} state={state} onState={onState} big />
+          <p className="muted hint">Commanded output only; ring sections are schematic, not sensor feedback.</p>
+          <button type="button" onClick={() => setEnlarged(false)}>Close</button>
+        </div>
+      </div>
+    )}
     <div className={compact ? "room-map compact" : "room-map"}>
       <div className="room-map-head">
         <span className="panel-title">{mode === "live" ? "LIVE" : "PREVIEW"}</span>
         {inactive && <span className="map-legend">Inactive</span>}
-        {mode === "live" && <button
+        {!big && <button type="button" className="map-edit map-zoom" style={{ marginLeft: "auto" }}
+          aria-label={`Enlarge ${mode} monitor`} title="Enlarge monitor" onClick={() => setEnlarged(true)}>⤢</button>}
+        {mode === "live" && !big && <button
           className={editing ? "map-edit active" : "map-edit"}
           aria-label={editing ? "Finish editing fixture positions" : "Edit fixture positions"}
           title={editing ? "Finish editing fixture positions" : "Edit fixture positions"}
@@ -335,7 +383,10 @@ function RoomMonitor({ compact, mode, state, onState }: {
         </div>
       )}
       {!editing && unplaced.length > 0 && (
-        <p className="muted hint">Not on the map: {unplaced.map((f) => f.name).join(", ")}</p>
+        <details className="muted hint">
+          <summary>{unplaced.length} not on the map</summary>
+          {unplaced.map((f) => f.name).join(", ")}
+        </details>
       )}
       {error && (
         <div className="banner error small-banner" onClick={() => setError(null)}>
@@ -343,5 +394,6 @@ function RoomMonitor({ compact, mode, state, onState }: {
         </div>
       )}
     </div>
+    </>
   );
 }

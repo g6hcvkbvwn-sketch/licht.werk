@@ -18,6 +18,7 @@ export default function SetupPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [newTarget, setNewTarget] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<Draft>({});
 
   const load = useCallback(async () => {
     try {
@@ -36,12 +37,26 @@ export default function SetupPanel() {
         for (const axis of ["x", "y", "z"] as const)
           next[`h.${head.id}.${axis}`] = head.setup.position ? String(head.setup.position[axis]) : "";
       setDraft(next);
+      setSaved(next);
     } catch (e) {
       setError((e as Error).message);
     }
   }, []);
 
   useEffect(() => void load(), [load]);
+
+  const dirtyKeys = (match: (key: string) => boolean) =>
+    Object.keys(draft).some((key) => match(key) && draft[key] !== saved[key]);
+  const roomDirty = dirtyKeys((k) => k.startsWith("room.") || k.startsWith("t."));
+  const anyDirty = dirtyKeys(() => true);
+  useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [anyDirty]);
+  const status = (dirty: boolean) => dirty
+    ? <span className="dirty-badge">● unsaved changes</span> : <span className="saved-badge">✔ saved</span>;
 
   const field = (key: string) => (
     <input
@@ -122,11 +137,14 @@ export default function SetupPanel() {
       {error && <div className="banner error">{error}</div>}
       {message && <div className="banner ok">{message}</div>}
       <section className="setup">
-        <h2>Room and targets</h2>
+        <h2>Room and targets {status(roomDirty)}</h2>
         <p className="muted">
-          Meters. Origin and axes as defined in project.md. Leave a target empty until it is measured.
+          All values in meters. Origin = floor corner at the DJ booth wall on the DJ's left; x = to the DJ's right, y = away from the booth, z = up.
+          Leave a target empty until it is measured.
         </p>
         <div className="coords">
+          <span className="muted">meters</span>
+          <span>x →DJ right</span><span>y →dance floor</span><span>z ↑up</span><span />
           <span>Room size</span>
           {field("room.x")}
           {field("room.y")}
@@ -154,17 +172,17 @@ export default function SetupPanel() {
       <ZoneEditor room={room} run={run} />
       {heads.map((head) => (
         <section key={head.id} className="setup">
-          <h2>{head.name} — mounting position</h2>
+          <h2>{head.name} — mounting position {status(dirtyKeys((k) => k.startsWith(`h.${head.id}.`)))}</h2>
           <div className="coords">
             <div className="coord-row">
-              <span>x · y · z (m)</span>
+              <span>x · y · z (meters)</span>
               {field(`h.${head.id}.x`)}
               {field(`h.${head.id}.y`)}
               {field(`h.${head.id}.z`)}
             </div>
           </div>
           <p className="muted">
-            Calibration, limits and rest position are set on the Positions page or in config/heads.json.
+            Fine aim, calibration and rest position are set on the Positions page or in config/heads.json.
           </p>
           <button className="primary" onClick={() => void saveMounting(head)}>Save mounting position</button>
         </section>

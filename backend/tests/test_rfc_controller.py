@@ -177,7 +177,7 @@ def test_zone_pad_presses_accumulate_areas_and_report_all_included(tmp_path, pre
         note(hw.NOTE_SHIFT)
         note(hw.NOTE_TRACK_SELECT, channel=2)
         note(hw.NOTE_SHIFT, 0)
-        view = note(hw.NOTE_DOWN)
+        view = note(hw.NOTE_DEVICE_LOCK)
         assert view["position_mode"] == "permissions"
         controller = app.state.fixture_controller
         before = controller.state("moving-head-1")
@@ -185,7 +185,7 @@ def test_zone_pad_presses_accumulate_areas_and_report_all_included(tmp_path, pre
         view = note(hw.pad_note(25))
         assert [p["included"] for p in view["pads"][24:26]] == [True, True]
         assert controller.state("moving-head-1") == before
-        note(hw.NOTE_UP)
+        note(hw.NOTE_DEVICE_ON_OFF)
         view = note(hw.pad_note(25))
         assert view["pads"][25]["active"]
         saved = rig.room_file().strip_assignments["apc40:2"]
@@ -197,7 +197,7 @@ def test_zone_pad_presses_accumulate_areas_and_report_all_included(tmp_path, pre
             assert rig.room_file(live=True).strip_assignments["apc40:2"].include_zones == []
             assert client.post("/api/preview", json={"active": False}).status_code == 200
         assert rig.room_file(live=True).strip_assignments["apc40:2"].include_zones == ["booth", "floor-area"]
-        note(hw.NOTE_DOWN)
+        note(hw.NOTE_DEVICE_LOCK)
         view = note(hw.pad_note(24))
         assert [p["included"] for p in view["pads"][24:26]] == [False, True]
         assert view["pads"][24]["explicitly_excluded"]

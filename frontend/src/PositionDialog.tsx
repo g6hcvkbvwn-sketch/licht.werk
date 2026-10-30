@@ -3,6 +3,7 @@ import {
   deleteTarget, deleteZone, getCurrentSurfacePoint, getHeads, getRoom, putRoom, putZone,
   SURFACE_AXES, type HeadInfo, type RoomDocument, type Surface,
 } from "./api";
+import DialogFrame from "./DialogFrame";
 import { toId } from "./ZoneEditor";
 
 export default function PositionDialog({ onClose, headIds, manage = false, initialKind = "target", initialItem }: {
@@ -20,6 +21,8 @@ export default function PositionDialog({ onClose, headIds, manage = false, initi
   const [editing, setEditing] = useState("");
   const [estimate, setEstimate] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const snapshot = (k: string, n: string, sf: string, v: Record<string, string>) => JSON.stringify([k, n, sf, v]);
+  const [baseline, setBaseline] = useState(() => snapshot(initialKind, "", "floor", {}));
   const headKey = headIds.join(",");
   useEffect(() => {
     let active = true;
@@ -32,13 +35,17 @@ export default function PositionDialog({ onClose, headIds, manage = false, initi
         if (!item) throw new Error("This target/zone no longer exists. Reopen the menu.");
         setEditing(item.id);
         setName(item.name);
+        let loaded: Record<string, string>, loadedSurface: string = "floor";
         if ("surface" in item) {
           setSurface(item.surface);
+          loadedSurface = item.surface;
           const axes = SURFACE_AXES[item.surface];
-          setValues({ cornerLength: String(item.corner[axes.length]), cornerWidth: String(item.corner[axes.width]),
-            length: String(item.length), width: String(item.width) });
-        } else setValues({ x: item.x === null ? "" : String(item.x),
-          y: item.y === null ? "" : String(item.y), z: item.z === null ? "" : String(item.z) });
+          loaded = { cornerLength: String(item.corner[axes.length]), cornerWidth: String(item.corner[axes.width]),
+            length: String(item.length), width: String(item.width) };
+        } else loaded = { x: item.x === null ? "" : String(item.x),
+          y: item.y === null ? "" : String(item.y), z: item.z === null ? "" : String(item.z) };
+        setValues(loaded);
+        setBaseline(JSON.stringify([initialKind, item.name, loadedSurface, loaded]));
       }
       const candidates = available.filter((h) => headKey.split(",").includes(h.id));
       setHeads(candidates);
@@ -53,18 +60,21 @@ export default function PositionDialog({ onClose, headIds, manage = false, initi
     setError(null);
     const item = nextKind === "target" ? room?.targets.find((t) => t.id === id)
       : room?.zones.find((z) => z.id === id);
-    setName(item?.name ?? "");
+    const nextName = item?.name ?? "";
+    let nextSurface: Surface = surface, nextValues: Record<string, string> = {};
     if (item && "surface" in item) {
-      setSurface(item.surface);
+      nextSurface = item.surface;
       const a = SURFACE_AXES[item.surface];
-      setValues({
+      nextValues = {
         cornerLength: String(item.corner[a.length]), cornerWidth: String(item.corner[a.width]),
         length: String(item.length), width: String(item.width),
-      });
+      };
     } else if (item && "x" in item) {
-      setValues({ x: item.x === null ? "" : String(item.x),
-        y: item.y === null ? "" : String(item.y), z: item.z === null ? "" : String(item.z) });
-    } else setValues({});
+      nextValues = { x: item.x === null ? "" : String(item.x),
+        y: item.y === null ? "" : String(item.y), z: item.z === null ? "" : String(item.z) };
+    }
+    setName(nextName); setSurface(nextSurface); setValues(nextValues);
+    setBaseline(snapshot(nextKind, nextName, nextSurface, nextValues));
   };
   const storePosition = async () => {
     setSaving(true);
@@ -159,18 +169,30 @@ export default function PositionDialog({ onClose, headIds, manage = false, initi
     }
   };
 
-  return <div className="dialog-backdrop">
-    <section role="dialog" aria-modal="true" aria-label={manage ? "Edit or delete target or zone" : "Add target or zone"} className="position-dialog">
-      <h2>{manage ? "Edit/delete target or zone" : "Add target/zone"}</h2>
-      <form onSubmit={(e) => { e.preventDefault(); void save(); }}>
+  const dirty = snapshot(kind, name, surface, values) !== baseline;
+  const single = manage && !!initialItem;
+  const title = single ? `Edit ${kind} · ${name || initialItem}`
+    : manage ? "Edit/delete target or zone" : "Add target/zone";
+  return <DialogFrame id="position-dialog" size="compact" dirty={dirty} busy={saving} onClose={onClose}
+    title={title} context="Changes apply when you press Save; no head moves."
+    status={error ? <p role="alert" className="error-text">{error}</p> : undefined}
+    footer={<>
+      <button type="submit" form="position-form" disabled={saving || !room || invalid || (manage && !editing)}>{saving ? "Saving..." : "Save"}</button>
+      <button type="button" disabled={saving} onClick={() => { if (!dirty || window.confirm("Discard unsaved changes?")) onClose(); }}>Cancel</button>
+      {manage && <details className="dialog-more"><summary>More</summary><div className="dialog-more-menu">
+        <button type="button" className="danger" disabled={saving || !editing} onClick={() => setConfirmDelete(true)}>Delete…</button>
+      </div></details>}
+    </>}>
+    <div className="position-dialog-body">
+      <form id="position-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
         <fieldset disabled={saving || !room}>
-        <label>Type <select value={kind} onChange={(e) => {
+        {!single && <label>Type <select value={kind} onChange={(e) => {
           const next = e.target.value as "target" | "zone";
           setKind(next); choose("", next);
         }}>
           <option value="target">Target</option><option value="zone">Zone</option>
-        </select></label>
-        {manage && <label>Existing {kind}
+        </select></label>}
+        {manage && !single && <label>Existing {kind}
           <select required value={editing} onChange={(e) => choose(e.target.value)}>
             <option value="">Choose {kind}...</option>
             {(kind === "target" ? room?.targets : room?.zones)?.map((item) => (
@@ -188,9 +210,12 @@ export default function PositionDialog({ onClose, headIds, manage = false, initi
           </label>
           <button type="button" disabled={!head} onClick={() => void storePosition()}>Store current position</button>
           {field("x", "x (m)")}{field("y", "y (m)")}{field("z", "z (m)")}
-          <p className="muted">{estimate ? "Calculated surface estimate loaded; review and Save to store it. " : ""}
+          <p className="muted">{estimate ? "Calculated surface estimate loaded; review and Save. " : ""}
+            Calculated estimate, not a measured position.</p>
+          <details className="muted"><summary>How the estimate works</summary>
             Assumes the commanded beam hits the first wall, floor or ceiling of the measured room.
-            This is not a measured object position; wait for the real head to settle. Use manual coordinates for objects inside the room.</p>
+            Wait for the real head to settle. Use manual coordinates for objects inside the room.</details>
+          {room && <p className="muted">Valid range: x 0-{room.room.size_x ?? "?"} m, y 0-{room.room.size_y ?? "?"} m, z 0-{room.room.size_z ?? "?"} m.</p>}
         </> : <>
           <label>Surface <select value={surface} onChange={(e) => setSurface(e.target.value as Surface)}>
             {(Object.keys(SURFACE_AXES) as Surface[]).map((s) => <option key={s} value={s}>{SURFACE_AXES[s].label}</option>)}
@@ -202,19 +227,12 @@ export default function PositionDialog({ onClose, headIds, manage = false, initi
           <p className="muted">{editing ? "Changes affect every strip using this zone." : "New zones do not grant beam permission. Include them using the strip's zone pads."}</p>
         </>}
         </fieldset>
-        {error && <p role="alert" className="error-text">{error}</p>}
         {confirmDelete && <div role="alert">
           Delete "{name}"? Its assignments will be cleared from all strips. This cannot be undone.
           <button type="button" disabled={saving} onClick={() => void remove()}>Confirm delete</button>
           <button type="button" disabled={saving} onClick={() => setConfirmDelete(false)}>Keep</button>
         </div>}
-        <div className="buttons">
-          <button type="submit" disabled={saving || !room || invalid || (manage && !editing)}>{saving ? "Saving..." : "Save"}</button>
-          {manage && <button type="button" disabled={saving || !editing}
-            onClick={() => setConfirmDelete(true)}>Delete</button>}
-          <button type="button" disabled={saving} onClick={onClose}>Cancel</button>
-        </div>
       </form>
-    </section>
-  </div>;
+    </div>
+  </DialogFrame>;
 }

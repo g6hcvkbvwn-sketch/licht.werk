@@ -67,6 +67,17 @@ export default function ShowPanel({ onScenesChanged }: { onScenesChanged?: () =>
   const [sequences, setSequences] = useState<Sequence[]>([]);
   const [dialog, setDialog] = useState<{ kind: "scene"; scene?: Scene } | { kind: "sequence"; sequence?: Sequence } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [running, setRunning] = useState<SequenceRuntime | null>(null);
+  useEffect(() => {
+    const poll = () => { getShow().then((state) => setRunning(state.sequence)).catch(() => undefined); };
+    poll();
+    const timer = window.setInterval(poll, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const matches = (name: string) => name.toLowerCase().includes(query.trim().toLowerCase());
+  const shownScenes = scenes.filter((scene) => matches(scene.name));
+  const shownSequences = sequences.filter((sequence) => matches(sequence.name));
   const refresh = useCallback(async () => {
     const [s, q] = await Promise.all([getScenes(), getSequences()]);
     setScenes(s); setSequences(q); onScenesChanged?.();
@@ -89,9 +100,11 @@ export default function ShowPanel({ onScenesChanged }: { onScenesChanged?: () =>
       : runtime?.id === sequence.id && runtime.status === "paused" ? "resume" : "start");
   };
   return <section className="show-library">
+    <input type="search" className="show-search" aria-label="Search scenes and sequences" placeholder="Search scenes and sequences by name"
+      value={query} onChange={(e) => setQuery(e.target.value)} />
     <header><h2>Scenes</h2><button onClick={() => setDialog({ kind: "scene" })}>Create scene</button></header>
     <p className="muted">Partial scenes coexist. Only overlapping controlled attributes stop a sequence. Click to recall; Shift-click or Edit opens saved values.</p>
-    <div className="scene-grid">{scenes.map((scene) => <div key={scene.id} className="scene">
+    <div className="scene-grid">{shownScenes.map((scene) => <div key={scene.id} className="scene">
       <button className="scene-recall" onClick={(e) => e.shiftKey ? setDialog({ kind: "scene", scene }) : void launch(() => recallScene(scene.id))}
         title={Object.keys(scene.groups).map((g) => `${g} (group)`).concat(Object.keys(scene.fixtures), Object.keys(scene.positions ?? {})).join(", ")}>
         {scene.name}<small className="scope-badges">{Object.keys(scene.groups).map((g) => `G · ${g}`).concat(
@@ -99,12 +112,14 @@ export default function ShowPanel({ onScenesChanged }: { onScenesChanged?: () =>
         ).join(" / ")}</small><small>Fade {scene.fade_timing === "beats" ? `${scene.fade_beats} beats` : `${scene.fade_seconds}s`}</small>
       </button><button onClick={() => setDialog({ kind: "scene", scene })}>Edit</button>
     </div>)}</div>
+    {query && shownScenes.length === 0 && <p className="muted">No scene matches “{query}”.</p>}
     <header><h2>Sequences</h2><button onClick={() => setDialog({ kind: "sequence" })}>Create sequence</button></header>
-    <div className="scene-grid">{sequences.map((sequence) => <div key={sequence.id} className="scene">
+    <div className="scene-grid">{shownSequences.map((sequence) => <div key={sequence.id} className="scene">
       <button className="scene-recall" onClick={(e) => e.shiftKey ? setDialog({ kind: "sequence", sequence }) : void launch(() => launchSequence(sequence))}>
-        {sequence.name}<small>{sequence.steps.length} steps · {sequence.timing} · {sequence.loop ? "loop" : "one shot"}</small>
+        {sequence.name}{running?.id === sequence.id && (running.status === "running" || running.status === "paused") && <small className="running-badge">● {running.status}</small>}<small>{sequence.steps.length} steps · {sequence.timing} · {sequence.loop ? "loop" : "one shot"}</small>
       </button><button onClick={() => setDialog({ kind: "sequence", sequence })}>Edit</button>
     </div>)}</div>
+    {query && shownSequences.length === 0 && <p className="muted">No sequence matches “{query}”.</p>}
     {error && <p className="banner error" role="alert">{error}</p>}
     {dialog?.kind === "scene" && <SceneDialog scene={dialog.scene} onClose={() => setDialog(null)} onSaved={() => void refresh().catch((e: Error) => setError(e.message))} />}
     {dialog?.kind === "sequence" && <SequenceDialog sequence={dialog.sequence} onClose={() => setDialog(null)} onSaved={() => void refresh().catch((e: Error) => setError(e.message))} />}

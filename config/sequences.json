@@ -1,0 +1,540 @@
+{
+  "sequences": [
+    {
+      "id": "blue-breathe",
+      "name": "Blue Breathe",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "ambient-blue",
+          "fade": 4,
+          "hold": 8
+        },
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 4,
+          "hold": 8
+        }
+      ]
+    },
+    {
+      "id": "purple-breathe",
+      "name": "Purple Breathe",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "ambient-purple",
+          "fade": 4,
+          "hold": 8
+        },
+        {
+          "scene_id": "magenta-cross",
+          "fade": 4,
+          "hold": 8
+        }
+      ]
+    },
+    {
+      "id": "wide-near-cycle",
+      "name": "Wide Near Cycle",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "floor-wide-blue",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "floor-near-magenta",
+          "fade": 2,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "cross-swap",
+      "name": "Cross Swap",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "cyan-cross",
+          "fade": 1,
+          "hold": 2
+        },
+        {
+          "scene_id": "magenta-cross",
+          "fade": 1,
+          "hold": 2
+        }
+      ]
+    },
+    {
+      "id": "diagonal-pulse",
+      "name": "Diagonal Pulse",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "opposite-diagonal",
+          "fade": 1,
+          "hold": 2
+        },
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 1,
+          "hold": 2
+        }
+      ]
+    },
+    {
+      "id": "blue-magenta-8",
+      "name": "Blue Magenta 8",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "full-blue",
+          "fade": 4,
+          "hold": 8
+        },
+        {
+          "scene_id": "full-magenta",
+          "fade": 4,
+          "hold": 8
+        }
+      ]
+    },
+    {
+      "id": "disco-ball-drift",
+      "name": "Disco Ball Drift",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "disco-ball-blue",
+          "fade": 4,
+          "hold": 8
+        },
+        {
+          "scene_id": "split-balls",
+          "fade": 4,
+          "hold": 8
+        },
+        {
+          "scene_id": "disco-ball-white",
+          "fade": 4,
+          "hold": 8
+        }
+      ]
+    },
+    {
+      "id": "floor-tour-slow",
+      "name": "Floor Tour Slow",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "floor-wide-blue",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "cyan-cross",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "floor-near-magenta",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "magenta-cross",
+          "fade": 2,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "dark-to-blue",
+      "name": "Dark to Blue",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "dark-rings",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "ambient-blue",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 2,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "red-pressure-loop",
+      "name": "Red Pressure Loop",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "ambient-purple",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "red-pressure",
+          "fade": 1,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "techno-ab",
+      "name": "Techno A B",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 1,
+          "hold": 2
+        },
+        {
+          "scene_id": "magenta-cross",
+          "fade": 1,
+          "hold": 2
+        }
+      ]
+    },
+    {
+      "id": "fast-cross",
+      "name": "Fast Cross",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "cyan-cross",
+          "fade": 0.5,
+          "hold": 1
+        },
+        {
+          "scene_id": "opposite-diagonal",
+          "fade": 0.5,
+          "hold": 1
+        },
+        {
+          "scene_id": "magenta-cross",
+          "fade": 0.5,
+          "hold": 1
+        },
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 0.5,
+          "hold": 1
+        }
+      ]
+    },
+    {
+      "id": "blue-hit-loop",
+      "name": "Blue Hit Loop",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 0.5,
+          "hold": 2
+        },
+        {
+          "scene_id": "cold-white-hit",
+          "fade": 0,
+          "hold": 0.5
+        }
+      ]
+    },
+    {
+      "id": "red-hit-loop",
+      "name": "Red Hit Loop",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "red-pressure",
+          "fade": 0.5,
+          "hold": 2
+        },
+        {
+          "scene_id": "drop-red",
+          "fade": 0,
+          "hold": 0.5
+        }
+      ]
+    },
+    {
+      "id": "white-punctuation",
+      "name": "White Punctuation",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "ambient-blue",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "cold-white-hit",
+          "fade": 0,
+          "hold": 0.5
+        }
+      ]
+    },
+    {
+      "id": "booth-energy-loop",
+      "name": "Booth Energy Loop",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "booth-standard",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "booth-drop-blue",
+          "fade": 0.5,
+          "hold": 2
+        }
+      ]
+    },
+    {
+      "id": "build-blue",
+      "name": "Build Blue",
+      "timing": "beats",
+      "loop": false,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "dark-rings",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "ambient-blue",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "full-blue",
+          "fade": 1,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "build-red",
+      "name": "Build Red",
+      "timing": "beats",
+      "loop": false,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "ambient-purple",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "magenta-cross",
+          "fade": 2,
+          "hold": 4
+        },
+        {
+          "scene_id": "red-pressure",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "drop-red",
+          "fade": 0,
+          "hold": 2
+        }
+      ]
+    },
+    {
+      "id": "drop-blue-one",
+      "name": "Drop Blue One Shot",
+      "timing": "beats",
+      "loop": false,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "beam-blackout",
+          "fade": 0,
+          "hold": 1
+        },
+        {
+          "scene_id": "drop-white",
+          "fade": 0,
+          "hold": 0.5
+        },
+        {
+          "scene_id": "full-blue",
+          "fade": 0.5,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "drop-red-one",
+      "name": "Drop Red One Shot",
+      "timing": "beats",
+      "loop": false,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "beam-blackout",
+          "fade": 0,
+          "hold": 1
+        },
+        {
+          "scene_id": "drop-red",
+          "fade": 0,
+          "hold": 0.5
+        },
+        {
+          "scene_id": "red-pressure",
+          "fade": 0.5,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "drop-booth-one",
+      "name": "Drop Booth One Shot",
+      "timing": "beats",
+      "loop": false,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "beam-blackout",
+          "fade": 0,
+          "hold": 1
+        },
+        {
+          "scene_id": "booth-drop-white",
+          "fade": 0,
+          "hold": 0.5
+        },
+        {
+          "scene_id": "drop-white",
+          "fade": 0,
+          "hold": 1
+        },
+        {
+          "scene_id": "full-blue",
+          "fade": 0.5,
+          "hold": 4
+        }
+      ]
+    },
+    {
+      "id": "strobe-blue-burst",
+      "name": "Strobe Blue Burst",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "strobe-blue",
+          "fade": 0,
+          "hold": 2
+        },
+        {
+          "scene_id": "deep-blue-floor",
+          "fade": 0,
+          "hold": 2
+        }
+      ]
+    },
+    {
+      "id": "strobe-white-burst",
+      "name": "Strobe White Burst",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "strobe-white-full",
+          "fade": 0,
+          "hold": 1
+        },
+        {
+          "scene_id": "beam-blackout",
+          "fade": 0,
+          "hold": 1
+        }
+      ]
+    },
+    {
+      "id": "peak-cycle",
+      "name": "Peak Cycle",
+      "timing": "beats",
+      "loop": true,
+      "live_controls": {},
+      "steps": [
+        {
+          "scene_id": "full-blue",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "full-magenta",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "red-pressure",
+          "fade": 1,
+          "hold": 4
+        },
+        {
+          "scene_id": "drop-white",
+          "fade": 0,
+          "hold": 0.5
+        }
+      ]
+    }
+  ]
+}

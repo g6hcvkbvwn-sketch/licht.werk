@@ -272,6 +272,27 @@ def test_scene_launch_leds_show_types_and_blink_while_running(rig) -> None:
     assert rig.apc.scene_launch_colours(blink_on=False)[1] == 54
 
 
+def test_shift_effect_pad_requests_the_slot_editor_without_starting_fx(rig) -> None:
+    press(rig, hw.NOTE_SCENE_LAUNCH_FIRST)
+    rig.apc.handle(MidiEvent("note", 1, hw.NOTE_SHIFT, 127))
+    press(rig, hw.pad_note(1 + 16))
+    rig.apc.handle(MidiEvent("note", 1, hw.NOTE_SHIFT, 0))
+    request_id, request = rig.apc.fx_dialog_request()
+    assert request_id == 1 and request == (2, "chase", 2, "beam")
+    assert rig.apc.running_effect(2, CHASE) is None
+
+
+def test_device_buttons_switch_pad_pages_and_show_the_active_one(rig) -> None:
+    leds = rig.apc.leds()
+    assert leds[("note", 1, hw.NOTE_DEVICE_LEFT)] == hw.LED_ON and leds[("note", 1, hw.NOTE_DEVICE_RIGHT)] == hw.LED_OFF
+    press(rig, hw.NOTE_DEVICE_RIGHT)
+    assert rig.apc.show_page() == "sequences"
+    leds = rig.apc.leds()
+    assert leds[("note", 1, hw.NOTE_DEVICE_LEFT)] == hw.LED_OFF and leds[("note", 1, hw.NOTE_DEVICE_RIGHT)] == hw.LED_ON
+    press(rig, hw.NOTE_LEFT)  # bank select no longer switches pages
+    assert rig.apc.show_page() == "sequences"
+
+
 def test_effect_pads_start_switch_and_stop_presets(rig, monkeypatch) -> None:
     # This test covers pad routing; the positioning tests exercise geometry permission.
     monkeypatch.setattr(rig.positions, "movement_allowed", lambda head: True)

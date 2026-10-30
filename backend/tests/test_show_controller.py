@@ -48,7 +48,7 @@ def test_sequence_controller_page_launch_pause_resume_restart_stop_and_edit():
             assert view["error"] is None, view["error"]
             return view
 
-        view = note(hw.NOTE_RIGHT)
+        view = note(hw.NOTE_DEVICE_RIGHT)
         assert view["pad_mode"] == "sequences"
         assert view["pads"][0]["sequence"] == sequence["id"]
         view = note(hw.pad_note(0))
@@ -72,7 +72,7 @@ def test_sequence_controller_page_launch_pause_resume_restart_stop_and_edit():
         view = note(hw.pad_note(1))
         assert view["show_dialog"]["kind"] == "sequence"
         assert view["show_dialog"]["item"] is None
-        assert note(hw.NOTE_LEFT)["pad_mode"] == "scenes"
+        assert note(hw.NOTE_DEVICE_LEFT)["pad_mode"] == "scenes"
 
 
 @pytest.mark.parametrize("preview", [False, True])
@@ -97,14 +97,14 @@ def test_permission_pads_never_move_and_aim_preserves_permissions(tmp_path, prev
         assert view["position_mode"] == "aim"
         controller = app.state.fixture_controller
         before = controller.state(HEAD)
-        note(hw.NOTE_DOWN)
+        note(hw.NOTE_DEVICE_LOCK)
         for expected in ("included", "excluded", "neither"):
             view = note(hw.pad_note(25))
             assert view["error"] is None
             assert view["pads"][25]["included"] == (expected == "included")
             assert view["pads"][25]["explicitly_excluded"] == (expected == "excluded")
             assert controller.state(HEAD) == before
-        note(hw.NOTE_UP)
+        note(hw.NOTE_DEVICE_ON_OFF)
         view = note(hw.pad_note(25))
         assert view["error"] is None
         assert rig.assignment(HEAD).aim_zone == "floor-area"
@@ -121,7 +121,7 @@ def test_permission_pads_never_move_and_aim_preserves_permissions(tmp_path, prev
         else:
             assert view["position_dialog_kind"] == "zone"
             assert view["position_dialog_item"] == "floor-area"
-        note(hw.NOTE_DOWN)
+        note(hw.NOTE_DEVICE_LOCK)
         note(hw.NOTE_SHIFT)
         note(hw.NOTE_TRACK_SELECT, channel=2)  # close
         view = note(hw.NOTE_TRACK_SELECT, channel=2)  # reopen defaults to Aim

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getDiagnostics } from "./api";
 import type { Diagnostics } from "./api";
 
@@ -7,30 +7,53 @@ export default function DiagnosticsPanel() {
   const [data, setData] = useState<Diagnostics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = () =>
+  const load = useCallback(() =>
       getDiagnostics()
         .then((d) => {
           setData(d);
           setError(null);
         })
-        .catch((e: Error) => setError(e.message));
-    load();
-    const timer = window.setInterval(load, 5000);
-    return () => window.clearInterval(timer);
-  }, []);
+        .catch((e: Error) => setError(e.message)), []);
 
-  if (!data) return <p className={error ? "error-text" : "muted"}>{error ?? "Loading…"}</p>;
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(), 5000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Copy failed: clipboard access was refused by the browser.");
+    }
+  };
+
+  if (!data) return <>
+    <p className={error ? "error-text" : "muted"}>{error ?? "Loading…"}</p>
+    {error && <button type="button" onClick={() => void load()}>Retry</button>}
+  </>;
+
+  const isBlocking = (w: string) => /collision|overflow|overlap|invalid|exceed|outside|unknown/i.test(w);
+  const blocking = data.warnings.filter(isBlocking);
+  const info = data.warnings.filter((w) => !isBlocking(w));
+  const where = (w: string) => /position|mount|calibrat|rest|pan|tilt/i.test(w) ? "Positions or Dimensions" : "Dimensions or config/patch.json";
 
   return (
     <>
       <section>
+        <button type="button" onClick={() => void copy()}>{copied ? "Copied" : "Copy diagnostics"}</button>
+        {" "}<button type="button" onClick={() => void load()}>Retry</button>
+        {error && <p className="error-text" role="alert">{error}</p>}
         <h2>Output</h2>
         <p>
           Mode: <strong>{data.output_mode}</strong>
         </p>
         <p>
-          Real DMX armed on universe(s):{" "}
+          Real DMX enabled on universe(s):{" "}
           <strong>{data.armed_universes.length ? data.armed_universes.join(", ") : "none"}</strong>
         </p>
         <p className="muted">
@@ -62,12 +85,16 @@ export default function DiagnosticsPanel() {
         </table>
       </section>
       <section>
-        <h2>Setup warnings</h2>
-        {data.warnings.length === 0 ? (
-          <p className="muted">None.</p>
-        ) : (
-          <ul>{data.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
-        )}
+        <h2>Setup issues</h2>
+        {data.warnings.length === 0 && <p className="muted">None.</p>}
+        {blocking.length > 0 && <>
+          <h3 className="error-text">Blocking</h3>
+          <ul>{blocking.map((w) => <li key={w}>{w} <small className="muted">· fix in {where(w)}</small></li>)}</ul>
+        </>}
+        {info.length > 0 && <>
+          <h3>Informational</h3>
+          <ul>{info.map((w) => <li key={w}>{w} <small className="muted">· see {where(w)}</small></li>)}</ul>
+        </>}
       </section>
       <section>
         <h2>Recent errors</h2>

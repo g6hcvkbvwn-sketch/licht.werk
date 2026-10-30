@@ -48,6 +48,10 @@ NOTE_UP = 0x5E
 NOTE_DOWN = 0x5F
 NOTE_RIGHT = 0x60
 NOTE_LEFT = 0x61
+NOTE_DEVICE_ON_OFF = 0x3E  # DEVICE ON/OFF (button 5): AIM mode
+NOTE_DEVICE_LOCK = 0x3F  # DEVICE LOCK (button 6): PERMISSIONS mode
+NOTE_DEVICE_LEFT = 0x3A  # single-colour LED; selects the SCENES page
+NOTE_DEVICE_RIGHT = 0x3B  # single-colour LED; selects the SEQUENCES page
 PAD_COUNT = 40  # clip launch pads: notes 0x00-0x27
 
 # Controllers.

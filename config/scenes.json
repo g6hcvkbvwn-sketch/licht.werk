@@ -1,143 +1,842 @@
 {
   "scenes": [
     {
-      "name": "Red-Green",
-      "fade_seconds": 2.0,
-      "fade_timing": "seconds",
-      "fade_beats": 1.0,
-      "groups": {},
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.0,
-          "strobe": 0.0,
-          "red": 0.0,
-          "green": 0.0,
-          "blue": 0.0
-        },
-        "moving-head-1": {
-          "intensity": 1.0,
-          "speed": 1.0,
-          "strobe": 0.0,
-          "red": 1.0,
-          "green": 0.0,
-          "blue": 0.0,
-          "white": 0.0,
-          "ring_intensity": 0.0,
-          "ring_strobe": 0.0,
-          "ring_red": 0.0,
-          "ring_green": 0.0,
-          "ring_blue": 0.0
-        },
-        "moving-head-2": {
-          "intensity": 1.0,
-          "speed": 1.0,
-          "strobe": 0.0,
-          "red": 0.0,
-          "green": 1.0,
-          "blue": 0.0,
-          "white": 0.0,
-          "ring_intensity": 0.0,
-          "ring_strobe": 0.0,
-          "ring_red": 0.0,
-          "ring_green": 0.0,
-          "ring_blue": 0.0
-        },
-        "dj-spot-1": {
-          "intensity": 0.0,
-          "strobe": 0.0,
-          "red": 0.0,
-          "green": 0.0,
-          "blue": 0.0,
-          "white": 0.0
-        },
-        "dj-spot-2": {
-          "intensity": 0.0,
-          "strobe": 0.0,
-          "red": 0.0,
-          "green": 0.0,
-          "blue": 0.0,
-          "white": 0.0
+      "id": "booth-standard",
+      "name": "Booth Standard Blue 10%",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 1,
+      "groups": {
+        "dj-spots": {
+          "intensity": 0.1,
+          "red": 0,
+          "green": 0,
+          "blue": 1,
+          "white": 0,
+          "strobe": 0
         }
-      },
-      "positions": {
-        "moving-head-1": {
-          "target_id": "disco-ball-rotating",
-          "zone_id": null,
-          "spot": null,
-          "included_zone_ids": [
-            "absorber-ru-ckwand-links-neben-tu-r"
-          ],
-          "excluded_zone_ids": []
-        },
-        "moving-head-2": {
-          "target_id": "dance-floor-center",
-          "zone_id": null,
-          "spot": null,
-          "included_zone_ids": [
-            "absorber-ru-ckwand-rechts-neben-tu-r"
-          ],
-          "excluded_zone_ids": []
-        }
-      },
-      "id": "red-green"
+      }
     },
     {
-      "name": "All blue",
-      "fade_seconds": 5.0,
-      "fade_timing": "seconds",
-      "fade_beats": 1.0,
-      "groups": {},
+      "id": "deep-blue-floor",
+      "name": "Deep Blue Floor",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
       "fixtures": {
-        "moving-head-1": {
-          "intensity": 0.5,
-          "speed": 1.0,
-          "strobe": 0.0,
-          "red": 0.0,
-          "green": 0.0,
-          "blue": 1.0,
-          "white": 0.0,
-          "ring_intensity": 0.0,
-          "ring_strobe": 0.0,
-          "ring_red": 0.0,
-          "ring_green": 0.0,
-          "ring_blue": 0.0
-        },
-        "moving-head-2": {
-          "intensity": 1.0,
-          "speed": 1.0,
-          "strobe": 0.0,
-          "red": 0.0,
-          "green": 0.0,
-          "blue": 1.0,
-          "white": 0.0,
-          "ring_intensity": 0.0,
-          "ring_strobe": 0.0,
-          "ring_red": 0.0,
-          "ring_green": 0.0,
-          "ring_blue": 0.0
+        "led-bar-1": {
+          "intensity": 0.28,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.48,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0.35,
+          "ring_green": 0,
+          "ring_blue": 0.3
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "disco-ball-rotating",
-          "zone_id": null,
-          "spot": null,
-          "included_zone_ids": [
-            "dancfloor"
-          ],
-          "excluded_zone_ids": []
+          "target_id": "dance-floor-center"
         },
         "moving-head-2": {
-          "target_id": "dance-floor-center",
-          "zone_id": null,
-          "spot": null,
-          "included_zone_ids": [
-            "dancfloor"
-          ],
-          "excluded_zone_ids": []
+          "target_id": "dance-floor-center"
+        }
+      }
+    },
+    {
+      "id": "cyan-cross",
+      "name": "Cyan Cross",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.32,
+          "strobe": 0,
+          "red": 0,
+          "green": 0.25,
+          "blue": 0.15
         }
       },
-      "id": "all-blue"
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.58,
+          "strobe": 0,
+          "red": 0,
+          "green": 0.25,
+          "blue": 0.15,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-right-upper"
+        },
+        "moving-head-2": {
+          "target_id": "floor-left-upper"
+        }
+      }
+    },
+    {
+      "id": "magenta-cross",
+      "name": "Magenta Cross",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.3,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.55,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-right-lower"
+        },
+        "moving-head-2": {
+          "target_id": "floor-left-lower"
+        }
+      }
+    },
+    {
+      "id": "red-pressure",
+      "name": "Red Pressure",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 1,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.45,
+          "strobe": 0,
+          "red": 0.45,
+          "green": 0,
+          "blue": 0
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.72,
+          "strobe": 0,
+          "red": 0.45,
+          "green": 0,
+          "blue": 0,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0.45,
+          "ring_green": 0,
+          "ring_blue": 0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center"
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center"
+        }
+      }
+    },
+    {
+      "id": "cold-white-hit",
+      "name": "Cold White Hit",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.55,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center"
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center"
+        }
+      }
+    },
+    {
+      "id": "floor-wide-blue",
+      "name": "Floor Wide Blue",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.38,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.62,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0.25,
+          "ring_blue": 0.15
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-upper"
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-upper"
+        }
+      }
+    },
+    {
+      "id": "floor-near-magenta",
+      "name": "Floor Near Magenta",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.35,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.6,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0.35,
+          "ring_green": 0,
+          "ring_blue": 0.3
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-lower"
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-lower"
+        }
+      }
+    },
+    {
+      "id": "opposite-diagonal",
+      "name": "Opposite Diagonal",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.58,
+          "strobe": 0,
+          "red": 0,
+          "green": 0.25,
+          "blue": 0.15,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0.35,
+          "ring_green": 0,
+          "ring_blue": 0.3
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-right-upper"
+        },
+        "moving-head-2": {
+          "target_id": "floor-left-lower"
+        }
+      }
+    },
+    {
+      "id": "disco-ball-blue",
+      "name": "Disco Ball Blue",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 4,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.18,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.5,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "disco-ball-high"
+        },
+        "moving-head-2": {
+          "target_id": "disco-ball-high"
+        }
+      }
+    },
+    {
+      "id": "disco-ball-white",
+      "name": "Disco Ball White",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.72,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "disco-ball-rotating"
+        },
+        "moving-head-2": {
+          "target_id": "disco-ball-rotating"
+        }
+      }
+    },
+    {
+      "id": "split-balls",
+      "name": "Split Disco Balls",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 4,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.5,
+          "strobe": 0,
+          "red": 0,
+          "green": 0.25,
+          "blue": 0.15,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0.35,
+          "ring_green": 0,
+          "ring_blue": 0.3
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "disco-ball-low"
+        },
+        "moving-head-2": {
+          "target_id": "disco-ball-high"
+        }
+      }
+    },
+    {
+      "id": "ambient-purple",
+      "name": "Ambient Purple",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 4,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.18,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.25,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-upper"
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-upper"
+        }
+      }
+    },
+    {
+      "id": "ambient-blue",
+      "name": "Ambient Blue",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 4,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.18,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.28,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0.25,
+          "ring_blue": 0.15
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center"
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center"
+        }
+      }
+    },
+    {
+      "id": "dark-rings",
+      "name": "Dark Rings",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 2,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0,
+          "ring_intensity": 0.32,
+          "ring_red": 0.2,
+          "ring_green": 0,
+          "ring_blue": 0.35
+        }
+      }
+    },
+    {
+      "id": "beam-blackout",
+      "name": "Beam Blackout",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0
+        }
+      }
+    },
+    {
+      "id": "booth-drop-blue",
+      "name": "Booth Drop Blue",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "groups": {
+        "dj-spots": {
+          "intensity": 0.65,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0
+        }
+      }
+    },
+    {
+      "id": "booth-drop-white",
+      "name": "Booth Drop White",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "groups": {
+        "dj-spots": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8
+        }
+      }
+    },
+    {
+      "id": "full-blue",
+      "name": "Full Blue",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 1,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.65,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.85,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0.25,
+          "ring_blue": 0.15
+        },
+        "dj-spots": {
+          "intensity": 0.35,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-upper"
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-upper"
+        }
+      }
+    },
+    {
+      "id": "full-magenta",
+      "name": "Full Magenta",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 1,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.62,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.82,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        },
+        "dj-spots": {
+          "intensity": 0.35,
+          "strobe": 0,
+          "red": 0.35,
+          "green": 0,
+          "blue": 0.3,
+          "white": 0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-lower"
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-lower"
+        }
+      }
+    },
+    {
+      "id": "drop-white",
+      "name": "Drop White",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0
+        },
+        "dj-spots": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center"
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center"
+        }
+      }
+    },
+    {
+      "id": "drop-red",
+      "name": "Drop Red",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0.45,
+          "green": 0,
+          "blue": 0
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 1,
+          "strobe": 0,
+          "red": 0.45,
+          "green": 0,
+          "blue": 0,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0.45,
+          "ring_green": 0,
+          "ring_blue": 0
+        },
+        "dj-spots": {
+          "intensity": 0.8,
+          "strobe": 0,
+          "red": 0.45,
+          "green": 0,
+          "blue": 0,
+          "white": 0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-lower"
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-lower"
+        }
+      }
+    },
+    {
+      "id": "strobe-blue",
+      "name": "Strobe Blue",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.85,
+          "strobe": 0.48,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.9,
+          "strobe": 0.42,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1,
+          "white": 0,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0.1
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center"
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center"
+        }
+      }
+    },
+    {
+      "id": "strobe-white-full",
+      "name": "Strobe White Full",
+      "fade_seconds": 0,
+      "fade_timing": "beats",
+      "fade_beats": 0,
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 1,
+          "strobe": 0.68,
+          "red": 0,
+          "green": 0,
+          "blue": 0.1
+        }
+      },
+      "groups": {
+        "moving-heads": {
+          "intensity": 1,
+          "strobe": 0.62,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8,
+          "speed": 1,
+          "ring_intensity": 0.3,
+          "ring_red": 0,
+          "ring_green": 0,
+          "ring_blue": 0
+        },
+        "dj-spots": {
+          "intensity": 1,
+          "strobe": 0.55,
+          "red": 0,
+          "green": 0,
+          "blue": 0,
+          "white": 0.8
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center"
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center"
+        }
+      }
     }
   ]
 }

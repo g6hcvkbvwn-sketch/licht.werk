@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   APC40,
   ConnectionError,
-  assignApc40Pad,
-  clearApc40Pad,
   getApc40,
   getScenes,
   getSequences,
@@ -176,15 +174,15 @@ interface Props {
 export default function Apc40View({ scenes }: Props) {
   const [state, setState] = useState<Apc40State | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [assigning, setAssigning] = useState(false);
-  const [assignPad, setAssignPad] = useState<number | null>(null);
   const [addingPosition, setAddingPosition] = useState(false);
   const [managingPosition, setManagingPosition] = useState(false);
   const [newPositionKind, setNewPositionKind] = useState<"target" | "zone">("target");
   const [positionItem, setPositionItem] = useState<string | null>(null);
-  const [fxDialog, setFxDialog] = useState<{ track: number; page: FxPage; stripName: string; component: FxComponent } | null>(null);
-  const lastDialogRequest = useRef(0);
-  const lastShowRequest = useRef(0);
+  const [fxDialog, setFxDialog] = useState<{ track: number; page: FxPage; stripName: string; component: FxComponent; initialSlot?: number } | null>(null);
+  // null until the first state arrives: requests that predate this mount must not reopen dialogs.
+  const lastDialogRequest = useRef<number | null>(null);
+  const lastShowRequest = useRef<number | null>(null);
+  const lastFxRequest = useRef<number | null>(null);
   const [showDialog, setShowDialog] = useState<{
     kind: "scene" | "sequence"; pad: number; scene?: Scene; sequence?: Sequence;
   } | null>(null);
@@ -232,7 +230,10 @@ export default function Apc40View({ scenes }: Props) {
 
   useEffect(() => {
     if (!state) return;
-    if (state.position_dialog_id === 0) lastDialogRequest.current = 0;
+    if (lastDialogRequest.current === null || state.position_dialog_id === 0) {
+      lastDialogRequest.current = state.position_dialog_id;
+      return;
+    }
     if (state.position_dialog_id > lastDialogRequest.current) {
       lastDialogRequest.current = state.position_dialog_id;
       if (state.position_dialog_kind && !state.preview && state.pad_mode === "positions") {
@@ -246,8 +247,27 @@ export default function Apc40View({ scenes }: Props) {
 
   useEffect(() => {
     if (!state) return;
+    const request = state.fx_dialog;
+    if (lastFxRequest.current === null || request.id < lastFxRequest.current) {
+      lastFxRequest.current = request.id;
+      return;
+    }
+    if (request.id === lastFxRequest.current || request.track === null || !request.page || !isFxPage(request.page)) return;
+    lastFxRequest.current = request.id;
+    const track = request.track, page = request.page;
+    setFxDialog({
+      track, page, component: request.component ?? "beam", initialSlot: request.slot,
+      stripName: state.strips.find((strip) => strip.track === track)?.label ?? `Strip ${track}`,
+    });
+  }, [state]);
+
+  useEffect(() => {
+    if (!state) return;
     const request = state.show_dialog;
-    if (!request.id) lastShowRequest.current = 0;
+    if (lastShowRequest.current === null || !request.id) {
+      lastShowRequest.current = request.id;
+      return;
+    }
     if (!request.kind || request.id <= lastShowRequest.current) return;
     lastShowRequest.current = request.id;
     const kind = request.kind;
@@ -270,14 +290,32 @@ export default function Apc40View({ scenes }: Props) {
     }
   }, [state]);
 
+  const [stale, setStale] = useState(false);
+  const [activeNotice, setActiveNotice] = useState<{ label: string; fixtures: string[] }[] | null>(null);
+  const activeKey = state?.strips.filter((s) => s.active).map((s) => s.track).join(",") ?? null;
+  const lastActive = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeKey === null) return;
+    const previous = lastActive.current;
+    lastActive.current = activeKey;
+    if (previous === null || previous === activeKey || !state) return;
+    setActiveNotice(state.strips.filter((s) => s.active)
+      .map((s) => ({ label: s.label, fixtures: s.group ? s.fixture_names : [] })));
+    const timer = window.setTimeout(() => setActiveNotice(null), 6000);
+    return () => window.clearTimeout(timer);
+    // Only a change of the active strips triggers the notice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
+
   useEffect(() => {
     let stop = false;
     const load = async () => {
       try {
         const next = await getApc40();
-        if (!stop) setState(next);
+        if (!stop) { setState(next); setStale(false); }
       } catch {
-        // The app header shows lost connections; keep the last state.
+        // Keep the last values, but mark them stale.
+        if (!stop) setStale(true);
       }
     };
     void load();
@@ -297,19 +335,24 @@ export default function Apc40View({ scenes }: Props) {
   const positionStrip = state.strips.find((s) => s.position_selected);
   // In preview these controls still act on the real output: mark them.
   const live = state.preview ? "live-control" : "";
-  // Scene assignment only makes sense while the pads show scenes.
-  const assignMode = assigning && state.pad_mode === "scenes";
+  const componentName = (s: Apc40Strip | null) => (s?.ring_selected ? "RING" : "BEAM");
+  const contextText = state.pad_mode === "positions"
+    ? ["POSITIONS", positionStrip?.label ?? "no strip", state.position_mode === "permissions" ? "PERMISSIONS" : "AIM"].join(" | ")
+    : fxOpen
+      ? ["FX", fxType?.label ?? "-", fxStrip ? componentName(fxStrip) : "-", fxStrip?.label ?? "choose a strip"].join(" | ")
+      : ["COLOUR", selectedStrip?.label ?? "no strip selected", selectedStrip ? componentName(selectedStrip) : "-"].join(" | ");
 
   const pressPad = (pad: Apc40Pad) => (velocity: number) => {
-    if (assignMode) {
-      if (velocity > 0) setAssignPad(pad.pad);
-      return;
-    }
     sender.note(1, pad.note, velocity);
   };
 
   return (
-    <div className="apc">
+    <>
+    <div className={state.connected ? "apc-status ok" : "apc-status"}>
+      {state.connected ? "APC40 MKII - connected" : "APC40 MKII - not connected"}
+      {stale && <strong className="stale-note"> · backend not responding, values may be stale</strong>}
+    </div>
+    <div className={stale ? "apc stale" : "apc"}>
       {showDialog?.kind === "scene" && <SceneDialog scene={showDialog.scene} pad={showDialog.pad}
         onClose={() => setShowDialog(null)} onSaved={() => { void getApc40().then(setState); }} />}
       {showDialog?.kind === "sequence" && <SequenceDialog sequence={showDialog.sequence} pad={showDialog.pad}
@@ -343,7 +386,7 @@ export default function Apc40View({ scenes }: Props) {
           <div />
         </div>
 
-        <div className={assignMode ? "apc-pads assigning" : "apc-pads"}>
+        <div className="apc-pads">
           {state.effect_types.map((t) => (
             <SceneLaunchButton
               key={t.index}
@@ -355,7 +398,6 @@ export default function Apc40View({ scenes }: Props) {
             <PadButton
               key={pad.pad}
               pad={pad}
-              chosen={assignMode && assignPad === pad.pad}
               onPress={pressPad(pad)}
             />
           ))}
@@ -468,25 +510,15 @@ export default function Apc40View({ scenes }: Props) {
 
       <aside className="apc-side">
         <RoomMap compact />
-        <div className="panel-title">Pads · {state.pad_mode.toUpperCase()}</div>
-        <div className="apc-show-pages">
-          <HwButton label="← SCENES" lit={state.pad_mode === "scenes" ? "green" : "off"}
-            onPress={(v) => sender.note(1, APC40.left, v)} />
-          <HwButton label="SEQUENCES →" lit={state.pad_mode === "sequences" ? "green" : "off"}
-            onPress={(v) => sender.note(1, APC40.right, v)} />
-        </div>
         <div className="apc-show-transport">
-          <HwButton label="PLAY / PAUSE" lit="off" title="PLAY: sequence pause/resume; SHIFT + PLAY: restart"
+          <HwButton label="▶ ❚❚" lit="off" title="PLAY: sequence pause/resume; SHIFT + PLAY: restart"
             onPress={(v) => sender.note(1, APC40.play, v)} />
-          <HwButton label="STOP" lit="off" title="RECORD: stop sequence at current values (not blackout)"
+          <HwButton label="■" lit="off" title="RECORD: stop sequence at current values (not blackout)"
             onPress={(v) => sender.note(1, APC40.record, v)} />
+          <HwButton label={state.preview ? "GO" : "PREVIEW"} lit={state.preview ? "red" : "off"}
+            className={state.preview ? "preview-go" : ""} title="SESSION RECORD: preview / Go"
+            onPress={(v) => sender.note(1, APC40.sessionRecord, v)} />
         </div>
-        <div className={state.connected ? "apc-status ok" : "apc-status"}>
-          {state.connected ? `APC40 connected (${state.device})` : "APC40 not connected: on-screen only"}
-        </div>
-        <HwButton label={state.preview ? "GO" : "PREVIEW"} lit={state.preview ? "red" : "off"}
-          className={state.preview ? "preview-go" : ""} title="SESSION RECORD: preview / Go"
-          onPress={(v) => sender.note(1, APC40.sessionRecord, v)} />
         {(error || state.error) && (
           <div className="banner error small-banner" onClick={() => setError(null)}>
             {error ?? state.error}
@@ -506,58 +538,41 @@ export default function Apc40View({ scenes }: Props) {
           />
         )}
 
-        <div className="panel-title">
-          {fxOpen
-            ? `Effect knobs · ${fxType?.label ?? ""}${fxStrip ? ` · ${fxStrip.label}${fxStrip.ring_selected && fxType?.type !== "circle" ? " · Ring" : ""}` : ""}`
-            : `${selectedStrip?.ring_selected ? "Ring colour" : "Device knobs"} ${selectedStrip ? `· ${selectedStrip.label}` : ""}`}
+        <div className="apc-context" aria-label={`Context: ${contextText}`}>{contextText}</div>
+        <div className="apc-device">
+          {state.knobs.map((k) => (
+            <Knob
+              key={k.knob}
+              {...noSelect}
+              disabled={k.function === null || (!selectedStrip && !fxOpen)}
+              value={k.value}
+              endless={false}
+              hue={k.function === "hue"}
+              label={k.label ?? ""}
+              sublabel={k.display ?? ""}
+              onValue={(v) => sender.absolute(1, APC40.deviceKnobFirst + k.knob - 1, v)}
+              onSteps={() => {}}
+            />
+          ))}
         </div>
-        {positionStrip && <div className="muted hint">
-          Targets / zones · {positionStrip.label}.
-          <div>
-            <button className={state.position_mode === "aim" ? "active" : ""}
-              onClick={() => sender.note(1, APC40.up, 127)}>AIM · ↑</button>
-            <button className={state.position_mode === "permissions" ? "active" : ""}
-              onClick={() => sender.note(1, APC40.down, 127)}>PERMISSIONS · ↓</button>
-          </div>
-          <div>Included areas: {state.pads.filter((pad) => pad.included).map((pad) => pad.label).join(", ") || "none"}</div>
-          <button disabled={state.preview} onClick={() => { setPositionItem(null); setAddingPosition(true); }}>Add target/zone</button>
-          <button disabled={state.preview} onClick={() => { setPositionItem(null); setManagingPosition(true); }}>Edit/delete target/zone</button>
-          {state.preview && <span>Finish preview before editing room definitions.</span>}
-        </div>}
-        {fxOpen && <div className="fx-edit-action">
-          <button type="button" disabled={state.fx_track === null || !fxType || !isFxPage(fxType.type)}
-            onClick={() => {
-              if (state.fx_track !== null && fxType && isFxPage(fxType.type)) setFxDialog({
-                track: state.fx_track, page: fxType.type,
-                component: fxStrip?.ring_selected && fxType.type !== "circle" ? "ring" : "beam",
-                stripName: state.strips.find((strip) => strip.track === state.fx_track)?.label ?? `Strip ${state.fx_track}`,
-              });
-            }}>Edit FX presets</button>
-          {state.fx_track === null && <small className="muted">Choose a strip with FX KNOBS / TRACK SELECT first.</small>}
-        </div>}
-        {selectedStrip || fxOpen ? (
-          <div className="apc-device">
-            {state.knobs.map((k) => (
-              <Knob
-                key={k.knob}
-                {...noSelect}
-                value={k.value}
-                endless={false}
-                hue={k.function === "hue"}
-                label={k.label ?? ""}
-                sublabel={k.display ?? ""}
-                onValue={(v) => sender.absolute(1, APC40.deviceKnobFirst + k.knob - 1, v)}
-                onSteps={() => {}}
-              />
-            ))}
-          </div>
-        ) : null}
-
-        <div className="apc-shift">
-          <HwButton label="SHIFT" lit={state.shift ? "amber" : "off"}
-            title="Hold with TRACK SELECT for target/zone menu, or an existing pad to edit"
+        <div className="apc-show-pages">
+          <HwButton label="SCENES" lit={state.pad_mode === "scenes" ? "amber" : "off"}
+            title="DEVICE < : show the scene pads"
+            onPress={(v) => sender.note(1, APC40.deviceLeft, v)} />
+          <HwButton label="SEQUENCES" lit={state.pad_mode === "sequences" ? "amber" : "off"}
+            title="DEVICE > : show the sequence pads"
+            onPress={(v) => sender.note(1, APC40.deviceRight, v)} />
+          {positionStrip && <>
+            <HwButton label="AIM" lit={state.position_mode === "aim" ? "amber" : "off"}
+              title="AIM: a pad moves the beam to that target/zone"
+              onPress={(v) => sender.note(1, APC40.deviceOnOff, v)} />
+            <HwButton label="PERMISSIONS" lit={state.position_mode === "permissions" ? "amber" : "off"}
+              title="PERMISSIONS: a pad changes where the strip may move; nothing moves"
+              onPress={(v) => sender.note(1, APC40.deviceLock, v)} />
+          </>}
+          <HwButton label="SHIFT" lit={state.shift ? "amber" : "off"} className="apc-shift-btn"
+            title="Hold with TRACK SELECT for the target/zone menu, or with a pad to edit it (keyboard Shift also works)"
             onPress={(v) => sender.note(1, APC40.shift, v)} />
-          <span>Target/Zone · keyboard Shift also works</span>
         </div>
         {(addingPosition || managingPosition) && <PositionDialog
           key={`${managingPosition ? "edit" : "new"}:${newPositionKind}:${positionItem ?? ""}`}
@@ -570,35 +585,15 @@ export default function Apc40View({ scenes }: Props) {
           onClose={() => { setAddingPosition(false); setManagingPosition(false); }}
         />}
 
-        {state.pad_mode === "scenes" && (
-          <button
-            className={assigning ? "assign-toggle active" : "assign-toggle"}
-            onClick={() => {
-              setAssigning(!assigning);
-              setAssignPad(null);
-            }}
-          >
-            {assigning ? "DONE ASSIGNING" : "ASSIGN SCENE PADS"}
-          </button>
-        )}
-        {assignMode && (
-          <PadAssigner
-            pad={assignPad === null ? null : state.pads[assignPad]}
-            scenes={scenes}
-            colours={state.scene_colours}
-            onState={setState}
-            onError={(m) => setError(m)}
-          />
-        )}
-
-        <div className="muted hint">
-          Last hardware input:{" "}
-          {state.last_event
-            ? `${state.last_event.kind} ch ${state.last_event.channel} #${state.last_event.number} = ${state.last_event.value}`
-            : "—"}
-        </div>
+        {activeNotice && <div role="status" className="active-notice">
+          <strong>Now active - remembered values apply</strong>
+          <ul>{activeNotice.length === 0 ? <li>none</li> : activeNotice.map((n) => (
+            <li key={n.label}>{n.label}{n.fixtures.length > 0 && <small>{n.fixtures.join(", ")}</small>}</li>
+          ))}</ul>
+        </div>}
       </aside>
     </div>
+    </>
   );
 }
 
@@ -644,7 +639,7 @@ function TempoPanel(props: {
   return (
     <div className="apc-tempo">
       <span className={props.beatOn ? "apc-beat on" : "apc-beat"} title="METRONOME: backend-synchronised beat">BEAT</span>
-      <HwButton label="TAP" lit="off" title="TAP TEMPO: tap on the beat" onPress={props.onTap} />
+      <HwButton className="apc-tap" label="TAP" lit="off" title="TAP TEMPO: tap on the beat" onPress={props.onTap} />
       <Knob
         {...noSelect}
         value={null}
@@ -673,7 +668,7 @@ function TempoPanel(props: {
   );
 }
 
-function PadButton(props: { pad: Apc40Pad; chosen: boolean; onPress: (velocity: number) => void }) {
+function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }) {
   const [pressed, setPressed] = useState(false);
   const { pad } = props;
   const release = () => {
@@ -689,7 +684,6 @@ function PadButton(props: { pad: Apc40Pad; chosen: boolean; onPress: (velocity: 
         pad.included ? "included" : "",
         pad.active ? "active" : "",
         pad.missing ? "missing" : "",
-        props.chosen ? "chosen" : "",
         pressed ? "pressed" : "",
       ].join(" ")}
       style={{
@@ -714,6 +708,11 @@ function PadButton(props: { pad: Apc40Pad; chosen: boolean; onPress: (velocity: 
         <span className="apc-pad-play">{pad.included ? "✓" : ""}{pad.active ? " ▶" : ""}</span>
       )}
       <span className="apc-pad-label">{pad.label ?? ""}</span>
+      {pad.sequence_loop != null && (
+        <span className="apc-pad-mode" title={pad.sequence_loop ? "Loops" : "Plays once"}>
+          {pad.sequence_loop ? "↻" : "→"}
+        </span>
+      )}
       {pad.fixture_badges.length > 0 && <small title={pad.fixture_badges.join(", ")}>
         {pad.fixture_badges.join(" · ")}
       </small>}
@@ -722,62 +721,3 @@ function PadButton(props: { pad: Apc40Pad; chosen: boolean; onPress: (velocity: 
   );
 }
 
-function PadAssigner(props: {
-  pad: Apc40Pad | null;
-  scenes: Scene[];
-  colours: Record<string, string>;
-  onState: (state: Apc40State) => void;
-  onError: (message: string) => void;
-}) {
-  const { pad } = props;
-  const [scene, setScene] = useState("");
-  const [colour, setColour] = useState("white");
-  useEffect(() => {
-    setScene(pad?.scene ?? props.scenes[0]?.id ?? "");
-    setColour(pad?.scene_colour ?? "white");
-    // Reset the form only when another pad is picked.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pad?.pad]);
-
-  const run = async (action: () => Promise<Apc40State>) => {
-    try {
-      props.onState(await action());
-    } catch (e) {
-      props.onError(e instanceof Error ? e.message : String(e));
-    }
-  };
-
-  if (!pad) return <p className="muted hint">Click a pad to give it a scene.</p>;
-  return (
-    <div className="panel-block">
-      <div className="panel-title">Pad {pad.pad + 1}</div>
-      <select value={scene} onChange={(e) => setScene(e.target.value)}>
-        {props.scenes.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-      <div className="apc-colours">
-        {Object.entries(props.colours).map(([name, hex]) => (
-          <button
-            key={name}
-            type="button"
-            title={name}
-            className={colour === name ? "apc-colour chosen" : "apc-colour"}
-            style={{ background: css(hex) }}
-            onClick={() => setColour(name)}
-          />
-        ))}
-      </div>
-      <div className="apc-assign-buttons">
-        <button disabled={!scene} onClick={() => void run(() => assignApc40Pad(pad.pad, scene, colour))}>
-          Save
-        </button>
-        <button disabled={!pad.scene} onClick={() => void run(() => clearApc40Pad(pad.pad))}>
-          Clear pad
-        </button>
-      </div>
-    </div>
-  );
-}

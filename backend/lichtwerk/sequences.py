@@ -67,7 +67,7 @@ class SequenceStore:
                     store._check(item)
                 store._items = document.sequences
             except (ValueError, KeyError) as error:
-                raise ValueError(f"Invalid sequence file {path}: {error}") from error
+                raise ValueError(f"Invalid sequence file {path}: {error}. A previous version may exist in {path.name}.bak.") from error
         return store
 
     def all(self) -> list[Sequence]:

@@ -24,6 +24,8 @@ interface KnobProps extends Selectable {
   sublabel: string;
   onValue: (value127: number) => void;
   onSteps: (steps: number) => void;
+  /** No function right now: greyed out and not controllable. */
+  disabled?: boolean;
 }
 
 /** Rotary pot or endless encoder. Drag up/down or use the mouse wheel. */
@@ -34,6 +36,7 @@ export function Knob(props: KnobProps) {
   const assigned = props.sublabel !== "" || props.label !== "";
 
   const down = (e: ReactPointerEvent) => {
+    if (props.disabled) return;
     if (props.assignMode) return props.onSelect();
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { y: e.clientY, start: props.value ?? 0, steps: 0 };
@@ -59,7 +62,7 @@ export function Knob(props: KnobProps) {
     setDragValue(null);
   };
   const wheel = (e: React.WheelEvent) => {
-    if (props.assignMode || e.deltaY === 0) return;
+    if (props.disabled || props.assignMode || e.deltaY === 0) return;
     const step = e.deltaY < 0 ? 1 : -1;
     if (props.endless) props.onSteps(step);
     else props.onValue(Math.round(clamp((props.value ?? 0) + step / 32) * 127));
@@ -76,7 +79,7 @@ export function Knob(props: KnobProps) {
   };
   return (
     <div
-      className={`knob-unit${props.selected ? " selected" : ""}${assigned ? "" : " unassigned"}${props.live ? " live-control" : ""} ${props.className ?? ""}`}
+      className={`knob-unit${props.selected ? " selected" : ""}${assigned ? "" : " unassigned"}${props.live ? " live-control" : ""}${props.disabled ? " knob-disabled" : ""} ${props.className ?? ""}`}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}

@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  aimHead,
   fitCalibration,
   getHeads,
   getRoom,
-  getApc40,
-  getStripAssignment,
   headToRest,
   saveHead,
   setSetupOverride,
 } from "./api";
-import type { CalibrationFit, HeadAssignment, HeadInfo, HeadsResult, RoomDocument, StripAssignmentResult } from "./api";
-import AimEditor from "./AimEditor";
+import type { CalibrationFit, HeadInfo, RoomDocument } from "./api";
 import FineAim from "./FineAim";
 
 type Observation = { pan: number; tilt: number; target: string };
@@ -19,40 +15,24 @@ type Observation = { pan: number; tilt: number; target: string };
 interface Props {
   /** Bumped by the parent after fixture commands so pan/tilt readouts refresh. */
   refreshKey: unknown;
-  /** Groups made only of moving heads; their aim and zones can be set at once. */
-  groups: { name: string; members: string[] }[];
   /** Called after heads were moved, so the pan/tilt sliders refresh. */
   onMoved: () => void;
 }
 
-const emptyAssignment: HeadAssignment = {
-  aim_target: null, aim_zone: null, include_zones: [], exclude_zones: [],
-};
-
-/** Aim moving heads at targets and zones, and calibrate them. All geometry is done by the backend. */
-export default function PositioningPanel({ refreshKey, groups, onMoved }: Props) {
+/** Fine aim, rest position and calibration of moving heads. Aiming at targets lives on the controller. */
+export default function PositioningPanel({ refreshKey, onMoved }: Props) {
   const [room, setRoom] = useState<RoomDocument | null>(null);
   const [heads, setHeads] = useState<HeadInfo[]>([]);
   const [observations, setObservations] = useState<Record<string, Observation[]>>({});
   const [fits, setFits] = useState<Record<string, CalibrationFit>>({});
-  const [fade, setFade] = useState(2);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState<string[]>([]);
-  const [strips, setStrips] = useState<(StripAssignmentResult & { label: string })[]>([]);
   const [overrideHead, setOverrideHead] = useState<string | null>(null);
 
   const reload = useCallback(() => {
-    Promise.all([getRoom(), getHeads(), getApc40().then(async (apc) => {
-      const positions = apc.strips.filter((strip) => strip.family === "heads");
-      return Promise.all(positions.flatMap((strip) => strip.target
-        ? [getStripAssignment(`apc40:${strip.track}`, strip.target).then((result) => ({
-          ...result, label: strip.label,
-        }))] : []));
-    })])
-      .then(([r, h, settings]) => {
+    Promise.all([getRoom(), getHeads()])
+      .then(([r, h]) => {
         setRoom(r);
         setHeads(h);
-        setStrips(settings);
       })
       .catch((e: Error) => setError(e.message));
   }, []);
@@ -78,55 +58,15 @@ export default function PositioningPanel({ refreshKey, groups, onMoved }: Props)
       ],
     }));
 
-  const onResult = (result: HeadsResult, assigned: boolean) => {
-    setError(null);
-    setHeads((current) => current.map((h) => result.heads.find((r) => r.id === h.id) ?? h));
-    if (assigned) {
-      setNotes(result.notes);
-      reload();
-      onMoved();
-    } else if (result.notes.length) {
-      setNotes(result.notes);
-    }
-  };
-
   if (!room) return error ? <p className="error">{error}</p> : null;
 
   return (
     <section className="fixture">
-      <h2>Moving-head positioning</h2>
+      <h2>Moving heads: fine aim, rest and calibration</h2>
       {error && <p className="error">{error}</p>}
-      {notes.map((note) => (
-        <p key={note} className="muted">⚠ {note}</p>
-      ))}
-      <label>
-        Move time: {fade} s
-        <input type="range" min={0} max={10} step={0.5} value={fade}
-          onChange={(e) => setFade(Number(e.target.value))} />
-      </label>
-      {groups.map((group) => {
-        const members = heads.filter((h) => group.members.includes(h.id));
-        const strip = strips.find((s) => s.target === group.name);
-        return (
-          <AimEditor
-            key={group.name}
-            target={group.name}
-            title={`All heads in “${strip?.label ?? group.name}”`}
-            current={strip?.assignment ?? room.assignments[group.name] ?? emptyAssignment}
-            owner={strip?.owner}
-            active={strip?.active}
-            spot={[members[0]?.spot_u ?? 0.5, members[0]?.spot_v ?? 0.5]}
-            room={room}
-            fade={fade}
-            onResult={onResult}
-            onError={setError}
-          />
-        );
-      })}
       {heads.map((head) => {
         const recorded = observations[head.id] ?? [];
         const fit = fits[head.id];
-        const strip = strips.find((s) => s.target === head.id);
         return (
           <div key={head.id} className="head">
             <h3>{head.name}</h3>
@@ -135,7 +75,7 @@ export default function PositioningPanel({ refreshKey, groups, onMoved }: Props)
               {head.tilt.toFixed(3)}
               {head.floor_point &&
                 ` · beam on floor at x ${head.floor_point.x.toFixed(2)} m, y ${head.floor_point.y.toFixed(2)} m`}
-              {!head.setup.position && " · mounting position missing (Setup page)"}
+              {!head.setup.position && " · mounting position missing (Dimensions page)"}
             </p>
             <p className={head.setup_override || head.guard_reason || head.beam_blocked_by ? "error" : "muted"}>
               {head.setup_override ? "CALIBRATION OVERRIDE – area blanking bypassed"
@@ -143,36 +83,10 @@ export default function PositioningPanel({ refreshKey, groups, onMoved }: Props)
                 : head.beam_blocked_by ? `BEAM OFF – excluded zone “${head.beam_blocked_by}”`
                 : `Area mask active${head.beam_hit ? ` · beam hits x ${head.beam_hit.x.toFixed(2)}, y ${head.beam_hit.y.toFixed(2)}, z ${head.beam_hit.z.toFixed(2)} m` : ""}`}
             </p>
-            <AimEditor
-              target={head.id}
-              title="Aim and zones"
-              current={strip?.assignment ?? head.assignment}
-              owner={strip?.owner}
-              active={strip?.active}
-              spot={[head.spot_u, head.spot_v]}
-              room={room}
-              fade={fade}
-              onResult={onResult}
-              onError={setError}
-            />
-            <button className={head.setup_override ? "danger" : ""}
-              onClick={() => head.setup_override
-                ? void run(() => setSetupOverride(head.id, false))
-                : setOverrideHead(head.id)}>
-              {head.setup_override ? "Disable calibration override" : "Calibration override..."}
-            </button>
-            {overrideHead === head.id && (
-              <div role="alertdialog" aria-label="Enable calibration override" className="banner error">
-                <p>Temporarily bypass area blanking for {head.name} during supervised calibration.
-                  Keep people clear, check limits and disable this immediately afterwards.
-                  Blackout and mechanical limits still apply. Finish preview before enabling.</p>
-                <button onClick={() => void run(async () => {
-                  await setSetupOverride(head.id, true);
-                  setOverrideHead(null);
-                })}>Enable temporary override</button>
-                <button onClick={() => setOverrideHead(null)}>Cancel</button>
-              </div>
-            )}
+            {head.setup_override && <button className="danger"
+              onClick={() => void run(() => setSetupOverride(head.id, false))}>
+              Disable calibration override
+            </button>}
             <FineAim
               head={head}
               onMoved={() => {
@@ -186,26 +100,18 @@ export default function PositioningPanel({ refreshKey, groups, onMoved }: Props)
                 const measured = target.x !== null;
                 return (
                   <span key={target.id} className="target">
-                    <button
-                      disabled={!measured || !head.calibrated}
-                      title={measured ? "" : "No coordinates yet (config/room.json)"}
-                      onClick={() => run(() => aimHead(head.id, target.id, fade))}
-                    >
-                      {target.name}
-                    </button>
-                    {measured && (
+                    {measured ? (
                       <button
-                        className="small"
                         title="Record the head's current pan/tilt as pointing at this target"
                         onClick={() => record(head, target.id)}
                       >
-                        {recorded.some((o) => o.target === target.id) ? "✔ rec" : "rec"}
+                        {recorded.some((o) => o.target === target.id) ? `✔ ${target.name}` : `Record ${target.name}`}
                       </button>
-                    )}
+                    ) : <span className="muted" title="No coordinates yet (Dimensions page)">{target.name}: no coordinates</span>}
                   </span>
                 );
               })}
-              <button disabled={!head.setup.rest} onClick={() => run(() => headToRest(head.id, fade))}>
+              <button disabled={!head.setup.rest} onClick={() => run(() => headToRest(head.id, 2))}>
                 Rest
               </button>
               <button
@@ -224,6 +130,21 @@ export default function PositioningPanel({ refreshKey, groups, onMoved }: Props)
               <p className="muted">
                 Rest: pan {head.setup.rest.pan.toFixed(3)} · tilt {head.setup.rest.tilt.toFixed(3)}
               </p>
+            )}
+            <details className="head-setup">
+              <summary>Rest, calibration override and fit</summary>
+            {!head.setup_override && <button onClick={() => setOverrideHead(head.id)}>Calibration override...</button>}
+            {overrideHead === head.id && (
+              <div role="alertdialog" aria-label="Enable calibration override" className="banner error">
+                <p>Temporarily bypass area blanking for {head.name} during supervised calibration.
+                  Keep people clear, check limits and disable this immediately afterwards.
+                  Blackout and mechanical limits still apply. Finish preview before enabling.</p>
+                <button onClick={() => void run(async () => {
+                  await setSetupOverride(head.id, true);
+                  setOverrideHead(null);
+                })}>Enable temporary override</button>
+                <button onClick={() => setOverrideHead(null)}>Cancel</button>
+              </div>
             )}
             <p className="muted">
               Calibration: steer the beam with Fine aim until its centre is on a target, press “rec”
@@ -257,6 +178,7 @@ export default function PositioningPanel({ refreshKey, groups, onMoved }: Props)
                 </button>
               </div>
             )}
+            </details>
           </div>
         );
       })}
