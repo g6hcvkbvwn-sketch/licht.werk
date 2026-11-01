@@ -19,6 +19,7 @@ from .config import (
     DEFAULT_MIDI_PATH,
     DEFAULT_ROOM_PATH,
     DEFAULT_SCENES_PATH,
+    LOG_DIR,
     load_config,
 )
 from .fixtures import load_fixture_library
@@ -33,7 +34,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def configure_logging() -> None:
-    log_directory = PROJECT_ROOT / "logs"
+    log_directory = LOG_DIR
     log_directory.mkdir(parents=True, exist_ok=True)
     file_handler = RotatingFileHandler(
         log_directory / "lichtwerk.log",
@@ -48,7 +49,7 @@ def configure_logging() -> None:
     )
 
 
-def main() -> None:
+def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the LichtWerk local prototype.")
     parser.add_argument("command", choices=["serve"], help="Start the local API server.")
     parser.add_argument(
@@ -111,9 +112,18 @@ def main() -> None:
         default=DEFAULT_MAP_PATH,
         help="Path to the JSON room-map file (created when the first fixture is placed).",
     )
-    args = parser.parse_args()
+    return parser.parse_args(argv)
 
+
+def main() -> None:
+    args = parse_args()
     configure_logging()
+    app = build_app(args)
+    uvicorn.run(app, host=args.host, port=args.port, log_config=None)
+
+
+def build_app(args: argparse.Namespace):
+    """Load every store from the paths in `args` and build the FastAPI app."""
     settings = load_config(args.config)
     library = load_fixture_library(args.fixtures)
     patch = load_patch(args.patch, library, settings.universes)
@@ -136,4 +146,4 @@ def main() -> None:
         name_path=args.patch.with_name("fixture-names.json"),
         fx_path=args.patch.with_name("fx-presets.json"),
     )
-    uvicorn.run(app, host=args.host, port=args.port, log_config=None)
+    return app

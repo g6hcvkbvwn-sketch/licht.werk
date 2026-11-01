@@ -24,6 +24,10 @@
 .fx-order button { margin-right: 5px; }
 .fx-tour { display: grid; gap: 12px; padding: 12px; border: 1px solid #4a4a59; }
 .fx-tour h3 { margin: 0; }
+.fx-target-selector { border: 1px solid #4a4a59; padding: 12px; display: grid; gap: 8px; }
+.fx-target-selector legend { padding: 0 4px; font-weight: 700; }
+.fx-target-selector label { display: flex; gap: 8px; align-items: center; }
+.fx-target-selector input[type="checkbox"] { flex-shrink: 0; }
 .fx-edit-action { display: grid; gap: 6px; margin: 10px 0; }
 @media (max-width: 600px) {
   .fx-slots { gap: 4px; }

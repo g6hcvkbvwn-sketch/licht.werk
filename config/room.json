@@ -150,7 +150,7 @@
   ],
   "assignments": {
     "moving-head-1": {
-      "aim_target": null,
+      "aim_target": "dance-floor-center",
       "aim_zone": null,
       "include_zones": [
         "dancfloor",
@@ -164,7 +164,7 @@
       "exclude_zones": []
     },
     "moving-head-2": {
-      "aim_target": null,
+      "aim_target": "dance-floor-center",
       "aim_zone": null,
       "include_zones": [
         "dancfloor",
@@ -200,7 +200,7 @@
       ]
     },
     "apc40:2": {
-      "aim_target": null,
+      "aim_target": "dance-floor-center",
       "aim_zone": null,
       "include_zones": [
         "dancfloor",

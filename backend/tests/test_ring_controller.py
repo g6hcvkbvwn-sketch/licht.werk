@@ -81,6 +81,20 @@ def test_stop_fx_stops_selected_component_only_and_preserves_group_single_memory
     assert rig.effects.running("apc40:2", EffectType.CHASE) is None
 
 
+def test_colour_palette_picker_keeps_beam_and_ring_independent():
+    rig = Rig()
+    rig.apc.start_effect(2, EffectType.RAINBOW, 0)
+    rig.press(hw.NOTE_CROSSFADER_AB, channel=2)
+    rig.apc.start_effect(2, EffectType.RAINBOW, 0)
+    before = rig.controller.snapshot()
+    rig.press(hw.NOTE_CLIP_STOP, channel=2)
+    rig.press(hw.pad_note(0))
+    assert rig.apc.palette_editing()
+    assert len(rig.effects.running("apc40:2", EffectType.RAINBOW, component="ring").params.palette) == 3
+    assert len(rig.effects.running("apc40:2", EffectType.RAINBOW).params.palette) == 2
+    assert rig.controller.snapshot() == before
+
+
 def test_individual_segment_does_not_change_uniform_only_head_in_mixed_group():
     original = club_patch()
     entries = [

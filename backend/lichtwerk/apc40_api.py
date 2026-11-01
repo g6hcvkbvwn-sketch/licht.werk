@@ -115,6 +115,8 @@ class Apc40View(BaseModel):
     selected: Optional[int]
     pad_mode: Literal["scenes", "sequences", "colours", "effects", "positions"]
     fx_track: Optional[int]
+    fx_palette: bool
+    colour_fx_palette: list[str]
     effect_types: list[EffectTypeView]
     bpm: Optional[float]  # None = effects not available
     beat_phase: Optional[float]
@@ -178,6 +180,8 @@ def build_router(
     def view() -> Apc40View:
         selected = control.selected()
         fx_open = control.fx_open()
+        palette_editing = control.palette_editing()
+        palette_pads = control.palette_pads() if palette_editing else {}
         fx_track = control.fx_track()
         fx_type = control.fx_type()
         position_track = control.position_track()
@@ -199,7 +203,7 @@ def build_router(
                 colours=[fixture_colour(f.patch.id) for f in fixtures],
                 fixture_names=[f.patch.name for f in fixtures],
                 colour_set=control.colour_set(strip.track),
-                fx_knobs=fx_open and fx_track == strip.track,
+                fx_knobs=(fx_open or palette_editing) and fx_track == strip.track,
                 fx_running=control.effect_running(strip.track),
                 position_selected=position_track == strip.track,
                 hazer=strip.track == 8,
@@ -261,6 +265,13 @@ def build_router(
                             control.controller.patch.get(fixture).patch.name
                             for fixture in dict.fromkeys([*scene.fixtures, *scene.positions])
                         ]
+            elif palette_editing:
+                entry.kind = "fx_colour"
+                indices = palette_pads.get(pad, [])
+                entry.active = bool(indices)
+                entry.label = ", ".join(str(index) for index in indices) if indices else None
+                if pad == hw.WHITE_PAD:
+                    entry.label = f"White {entry.label or ''}".strip()
             elif selected is not None and control.ring_selected(selected):
                 entry.label, entry.active = control.ring_pad(selected, pad)
                 if pad < 8 and entry.label is not None:
@@ -274,10 +285,17 @@ def build_router(
             pads.append(entry)
         device = control.device_knobs()
         knobs = []
-        for knob in (1, 2, 5, 6):
+        for knob in (1, 2, 3, 5, 6, 7):
             function, label, value = device.get(knob, (None, None, None))
             display = None
-            if fx_open and function == "speed" and fx_track is not None:
+            if (fx_open or palette_editing) and function in ("shape", "maximum") and fx_track is not None:
+                running = control.running_effect(fx_track, fx_type)
+                if running is not None:
+                    display = (
+                        running.params.shape.replace("_", " ").title()
+                        if function == "shape" else f"{running.params.maximum:.0%}"
+                    )
+            if (fx_open or palette_editing) and function == "speed" and fx_track is not None:
                 running = control.running_effect(fx_track, fx_type)
                 if running is not None:
                     duration = (running.params.travel if running.params.target_ids
@@ -302,6 +320,8 @@ def build_router(
         event = control.last_event()
         state = status()
         return Apc40View(
+            fx_palette=palette_editing,
+            colour_fx_palette=control.colour_fx_palette(),
             connected=state.get("connected", False),
             device=state.get("device"),
             other_connected=state.get("other_connected", False),

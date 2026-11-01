@@ -105,9 +105,18 @@ export default function FixturePanel({ fixture, lockedAttributes = [], onChange,
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  // Follow server-side changes (scene recalls, fades) unless the user is mid-edit.
+  // Follow server-side changes (scene recalls, fades) unless the user is mid-edit for that specific attribute.
   useEffect(() => {
-    if (Object.keys(pending.current).length === 0) setValues(fixture.state);
+    setValues((current) => {
+      // Merge server state into local state, but preserve any pending changes.
+      const merged = { ...fixture.state };
+      for (const key in current) {
+        if (!pending.current.hasOwnProperty(key)) {
+          merged[key] = fixture.state[key] ?? current[key];
+        }
+      }
+      return merged;
+    });
   }, [fixture.state]);
 
   // Batch changes and send them shortly after the user stops dragging.

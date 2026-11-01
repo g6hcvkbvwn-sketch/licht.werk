@@ -14,6 +14,7 @@ from lichtwerk.effects import (
     PRESETS,
     EffectParams,
     EffectType,
+    FxDefinition,
     beats_from_level,
     fits,
     fixture_phase,
@@ -380,6 +381,68 @@ def test_clip_stop_led_shows_colour_set_and_current_colour_pad_blinks(rig) -> No
 
 # --- API ---------------------------------------------------------------------------------------
 
+@pytest.mark.parametrize("kind", [RAINBOW, TWO])
+def test_colour_fx_picker_edits_runtime_not_fixture_or_preset(rig, kind) -> None:
+    definition = FxDefinition(name="Test colour", kind=kind, params=params())
+    rig.apc.start_effect(1, RAINBOW, 0, definition)
+    original = rig.apc.running_effect(1, RAINBOW)
+    base = dict(rig.state("led-bar-1"))
+    rig.press(hw.NOTE_CLIP_STOP)
+    assert rig.apc.palette_editing()
+    assert rig.apc.palette_pads() == {5: [1], 7: [2]}
+    assert rig.apc.pad_colours(False)[5] == 0
+    assert rig.apc.pad_colours(True)[5] != 0
+    rig.press(hw.pad_note(0))  # add saturated red
+    running = rig.apc.running_effect(1, RAINBOW)
+    assert running.params.palette == ["#0000ff", "#ff00ff", "#ff0000"]
+    assert running.params.colour_mode == "palette"
+    assert running.kind == kind and running.preset == original.preset
+    assert running.launched_at == original.launched_at
+    assert definition.params.palette == ["#0000ff", "#ff00ff"]
+    assert rig.state("led-bar-1") == base
+    rig.press(hw.pad_note(5))  # remove blue
+    assert rig.apc.colour_fx_palette() == ["#ff00ff", "#ff0000"]
+    rig.press(hw.pad_note(7))  # cannot remove below two
+    assert "2–8" in rig.apc.last_error()
+    assert rig.apc.colour_fx_palette() == ["#ff00ff", "#ff0000"]
+    rig.apc.handle(MidiEvent("note", 1, hw.NOTE_SHIFT, 127))
+    rig.press(hw.NOTE_CLIP_STOP)  # SHIFT+COLOR switches directly to fixture control
+    rig.apc.handle(MidiEvent("note", 1, hw.NOTE_SHIFT, 0))
+    assert not rig.apc.palette_editing()
+    rig.press(hw.pad_note(5))
+    assert rig.apc.colour_fx_palette() == []
+    assert rig.apc.running_effect(1, RAINBOW).params.palette == ["#ff00ff", "#ff0000"]
+
+
+def test_colour_fx_picker_white_limit_and_stopped_effect(rig) -> None:
+    rig.apc.start_effect(1, RAINBOW, 0)
+    rig.press(hw.NOTE_CLIP_STOP)
+    for pad in [0, 1, 2, 3, 4, hw.WHITE_PAD]:
+        rig.press(hw.pad_note(pad))
+    assert len(rig.apc.colour_fx_palette()) == 8
+    assert rig.apc.colour_fx_palette()[-1] == "#ffffff"
+    rig.press(hw.pad_note(6))
+    assert "2–8" in rig.apc.last_error()
+    assert len(rig.apc.colour_fx_palette()) == 8
+    rig.press(hw.pad_note(hw.WHITE_PAD))
+    assert len(rig.apc.colour_fx_palette()) == 7
+    base = dict(rig.state("led-bar-1"))
+    rig.effects.stop_all()
+    rig.press(hw.pad_note(0))
+    assert "stopped" in rig.apc.last_error()
+    assert rig.state("led-bar-1") == base
+
+
+def test_colour_fx_picker_preview_is_separate_and_track_selection_closes_picker(rig) -> None:
+    rig.apc.start_effect(1, RAINBOW, 0)
+    rig.preview.toggle()
+    rig.press(hw.NOTE_CLIP_STOP)
+    rig.press(hw.pad_note(0))
+    assert len(rig.apc.colour_fx_palette()) == 3
+    assert len(rig.effects.all_running(preview=False)[0][2].params.palette) == 2
+    rig.press(hw.NOTE_TRACK_SELECT, channel=2)
+    assert not rig.apc.palette_editing()
+
 
 @pytest.fixture
 def client(tmp_path):
@@ -397,6 +460,7 @@ def client(tmp_path):
 def test_api_effects_page_and_typed_bpm(client) -> None:
     view = client.get("/api/apc40").json()
     assert view["pad_mode"] == "scenes" and view["bpm"] == 128.0
+    assert [knob["knob"] for knob in view["knobs"]] == [1, 2, 3, 5, 6, 7]
     view = client.post(
         "/api/apc40/event",
         json={"kind": "note", "channel": 1, "number": hw.NOTE_SCENE_LAUNCH_FIRST, "value": 127},
@@ -417,5 +481,46 @@ def test_api_effects_page_and_typed_bpm(client) -> None:
     ).json()
     assert view["pads"][1]["active"] is True and view["strips"][1]["fx_running"] is True
     assert view["effect_types"][0]["running"] is True
+    for value, shape in [(0, "Legacy"), (21, "Sine"), (42, "Triangle"), (64, "Square"),
+                         (85, "Saw Up"), (106, "Saw Down"), (127, "One By One")]:
+        response = client.post(
+            "/api/apc40/event",
+            json={"kind": "cc", "channel": 1, "number": hw.CC_DEVICE_KNOB_FIRST + 2, "value": value},
+        )
+        assert response.status_code == 200
+        knobs = {knob["knob"]: knob for knob in response.json()["knobs"]}
+        assert knobs[3]["function"] == "shape"
+        assert knobs[3]["display"] == shape
+        assert knobs[3]["value"] == pytest.approx(round(value / 127 * 6) / 6)
+    response = client.post(
+        "/api/apc40/event",
+        json={"kind": "cc", "channel": 1, "number": hw.CC_DEVICE_KNOB_FIRST + 6, "value": 64},
+    )
+    assert response.status_code == 200
+    knobs = {knob["knob"]: knob for knob in response.json()["knobs"]}
+    assert knobs[7]["function"] == "maximum"
+    assert knobs[7]["value"] == pytest.approx(64 / 127)
+    assert knobs[7]["display"] == "50%"
     assert client.put("/api/apc40/tempo", json={"bpm": 128}).json()["bpm"] == 128.0
     assert client.put("/api/apc40/tempo", json={"bpm": 500}).status_code == 422
+
+
+def test_api_colour_palette_picker_matches_hardware_feedback(client) -> None:
+    def event(number, kind="note", value=127):
+        response = client.post("/api/apc40/event", json={
+            "kind": kind, "channel": 1, "number": number, "value": value,
+        })
+        assert response.status_code == 200
+        return response.json()
+
+    event(hw.NOTE_SCENE_LAUNCH_FIRST + 1)
+    event(hw.pad_note(0))
+    view = event(hw.NOTE_CLIP_STOP)
+    assert view["fx_palette"] and view["pad_mode"] == "colours"
+    assert view["pads"][5]["active"] and view["pads"][5]["kind"] == "fx_colour"
+    assert view["pads"][5]["label"] == "1"
+    view = event(hw.pad_note(0))
+    assert view["colour_fx_palette"] == ["#0000ff", "#ff00ff", "#ff0000"]
+    assert view["pads"][0]["active"] and view["pads"][0]["label"] == "3"
+    view = event(hw.CC_DEVICE_KNOB_FIRST, kind="cc", value=127)
+    assert view["knobs"][0]["value"] == 1.0  # knobs still edit Colour FX

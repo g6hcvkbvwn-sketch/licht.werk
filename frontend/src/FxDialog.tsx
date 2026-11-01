@@ -314,12 +314,17 @@ export default function FxDialog({ track, page, stripName, stripActive, preview,
             {tour ? <section className="fx-tour">
               <h3>Ordered Target Tour destinations</h3>
               <OrderedList ids={p.target_ids} items={data.targets} removable onChange={(target_ids) => change({ target_ids })} />
-              <label>Add destination <select value="" onChange={(e) => {
-                if (e.target.value) change({ target_ids: [...p.target_ids, e.target.value] });
-              }}><option value="">Choose a named target…</option>
-                {data.targets.filter((t) => !p.target_ids.includes(t.id)).map((t) =>
-                  <option value={t.id} key={t.id}>{t.name}</option>)}
-              </select></label>
+              <fieldset className="fx-target-selector">
+                <legend>Select destinations</legend>
+                {data.targets.map((t) =>
+                  <label key={t.id}><input type="checkbox" checked={p.target_ids.includes(t.id)}
+                    onChange={(e) => change({
+                      target_ids: e.target.checked
+                        ? [...p.target_ids, t.id]
+                        : p.target_ids.filter(id => id !== t.id)
+                    })} />{t.name}</label>
+                )}
+              </fieldset>
               <NumberField label="Travel" value={p.travel} positive max={120} unit={p.timing}
                 onChange={(travel) => change({ travel })} />
               <NumberField label="Hold" value={p.hold} positive max={120} unit={p.timing}

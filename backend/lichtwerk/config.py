@@ -1,21 +1,25 @@
 """Validated application configuration."""
 
 import json
+import os
 from pathlib import Path
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, ValidationError
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "app.json"
-DEFAULT_FIXTURES_DIR = PROJECT_ROOT / "config" / "fixtures"
-DEFAULT_PATCH_PATH = PROJECT_ROOT / "config" / "patch.json"
-DEFAULT_SCENES_PATH = PROJECT_ROOT / "config" / "scenes.json"
-DEFAULT_ROOM_PATH = PROJECT_ROOT / "config" / "room.json"
-DEFAULT_HEADS_PATH = PROJECT_ROOT / "config" / "heads.json"
-DEFAULT_MIDI_PATH = PROJECT_ROOT / "config" / "midi.json"
-DEFAULT_APC40_PATH = PROJECT_ROOT / "config" / "apc40.json"
-DEFAULT_MAP_PATH = PROJECT_ROOT / "config" / "map.json"
+# The desktop app keeps its working copy of config/ and its logs in Application Support.
+CONFIG_DIR = Path(os.environ.get("LICHTWERK_CONFIG_DIR") or PROJECT_ROOT / "config")
+LOG_DIR = Path(os.environ.get("LICHTWERK_LOG_DIR") or PROJECT_ROOT / "logs")
+DEFAULT_CONFIG_PATH = CONFIG_DIR / "app.json"
+DEFAULT_FIXTURES_DIR = CONFIG_DIR / "fixtures"
+DEFAULT_PATCH_PATH = CONFIG_DIR / "patch.json"
+DEFAULT_SCENES_PATH = CONFIG_DIR / "scenes.json"
+DEFAULT_ROOM_PATH = CONFIG_DIR / "room.json"
+DEFAULT_HEADS_PATH = CONFIG_DIR / "heads.json"
+DEFAULT_MIDI_PATH = CONFIG_DIR / "midi.json"
+DEFAULT_APC40_PATH = CONFIG_DIR / "apc40.json"
+DEFAULT_MAP_PATH = CONFIG_DIR / "map.json"
 
 
 class OlaConfig(BaseModel):

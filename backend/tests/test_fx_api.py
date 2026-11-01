@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from lichtwerk.api import create_app
+from lichtwerk import apc40 as hw
 from lichtwerk.config import AppConfig
 from lichtwerk.effects import EffectType
 from test_apc40 import club_patch
@@ -90,6 +91,26 @@ def test_slot_save_snapshot_store_reset_and_restart(fx):
         assert data["running"] is None
     assert client.delete(endpoint).json()["slots"][0]["name"] == "Pulse"
     assert client.get("/api/fx/1/chase/slots").json()["running"] is not None
+
+
+def test_colour_pad_edits_persist_only_when_stored(fx):
+    client, _, path, _ = fx
+    endpoint = "/api/fx/1/rainbow/slots/0"
+    original = slot(client, page="rainbow")
+    assert client.post(endpoint + "/start").status_code == 200
+    for number in (hw.NOTE_CLIP_STOP, hw.pad_note(0)):
+        response = client.post("/api/apc40/event", json={
+            "kind": "note", "channel": 1, "number": number, "value": 127,
+        })
+        assert response.status_code == 200
+    data = client.get("/api/fx/1/rainbow/slots").json()
+    assert data["running"]["definition"]["params"]["palette"][-1] == "#ff0000"
+    assert data["slots"][0] == original
+    assert not path.exists()
+    stored = client.post(endpoint + "/store")
+    assert stored.status_code == 200
+    assert stored.json()["slots"][0]["params"]["palette"][-1] == "#ff0000"
+    assert json.loads(path.read_text())["slots"][0]["definition"]["params"]["colour_mode"] == "palette"
 
 
 def test_preview_apply_isolated_and_stop_reveals_latest_base(fx):

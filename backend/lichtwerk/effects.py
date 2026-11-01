@@ -53,6 +53,7 @@ def family(kind: EffectType) -> EffectType:
 BEAT_CHOICES: tuple[float, ...] = (32.0, 16.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25)
 MOVE_RADIUS_DEGREES = 30.0
 Shape = Literal["legacy", "sine", "triangle", "square", "saw_up", "saw_down", "one_by_one"]
+SHAPES: tuple[Shape, ...] = ("legacy", "sine", "triangle", "square", "saw_up", "saw_down", "one_by_one")
 
 
 class EffectParams(BaseModel):
@@ -152,7 +153,14 @@ PRESETS: dict[EffectType, tuple[EffectPreset, ...]] = {
     ),
 }
 PRESET_COUNT = 5
-PARAM_LABELS = {"speed": "Speed", "size": "Size", "spread": "Spread", "softness": "Softness"}
+PARAM_LABELS = {
+    "speed": "Speed",
+    "size": "Size",
+    "spread": "Spread",
+    "softness": "Softness",
+    "shape": "Shape",
+    "maximum": "Maximum",
+}
 
 
 def factory_choices() -> list[FxDefinition]:
@@ -210,7 +218,7 @@ def family_presets(page: EffectType) -> tuple[FxDefinition, ...]:
 
 
 def knob_params(effect_type: EffectType) -> dict[int, str]:
-    knobs = {1: "speed", 2: "size", 5: "spread"}
+    knobs = {1: "speed", 2: "size", 3: "shape", 5: "spread", 7: "maximum"}
     if effect_type in (EffectType.CHASE, EffectType.TWO_COLOUR):
         knobs[6] = "softness"
     return knobs

@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import type { LedColour } from "./api";
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
@@ -21,7 +21,7 @@ interface KnobProps extends Selectable {
   /** Draw the value as a colour wheel position (hue). */
   hue?: boolean;
   label: string;
-  sublabel: string;
+  sublabel: ReactNode;
   onValue: (value127: number) => void;
   onSteps: (steps: number) => void;
   /** No function right now: greyed out and not controllable. */

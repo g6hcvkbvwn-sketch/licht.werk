@@ -595,6 +595,8 @@ export interface Apc40Pad {
 }
 
 export interface Apc40State {
+  fx_palette: boolean;
+  colour_fx_palette: string[];
   position_dialog_id: number;
   position_dialog_kind: "target" | "zone" | null;
   position_dialog_item: string | null;

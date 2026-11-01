@@ -515,7 +515,9 @@ def test_api_view_events_and_pad_assignment(client, tmp_path) -> None:
         "/api/apc40/event", json={"kind": "note", "channel": 2, "number": hw.NOTE_CLIP_STOP, "value": 127}
     ).json()
     assert view["selected"] == 2 and view["pad_mode"] == "colours"
-    assert [k["label"] for k in view["knobs"][:4]] == ["Pan", "Tilt", "Speed", "White"]
+    knobs = {knob["knob"]: knob for knob in view["knobs"]}
+    assert [knobs[number]["label"] for number in (1, 2, 5, 6)] == ["Pan", "Tilt", "Speed", "White"]
+    assert knobs[3]["function"] is None and knobs[7]["function"] is None
     assert view["pads"][hw.WHITE_PAD]["label"] == "White"
 
     view = client.delete("/api/apc40/pads/0").json()

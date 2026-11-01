@@ -22,6 +22,11 @@ dev = [
     "pytest>=8,<10",
 ]
 
+desktop = [
+    "pywebview>=5",
+    "pyinstaller>=6",
+]
+
 [project.scripts]
 lichtwerk = "lichtwerk.cli:main"
 

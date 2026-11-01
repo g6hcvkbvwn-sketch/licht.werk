@@ -21,6 +21,7 @@ import {
 import ControllerPage from "./ControllerPage";
 import DiagnosticsPanel from "./DiagnosticsPanel";
 import FixturePanel, { DisplayNameEditor } from "./FixturePanel";
+import OlaSetupNotice from "./OlaSetupNotice";
 import MidiPanel from "./MidiPanel";
 import PositioningPanel from "./PositioningPanel";
 import ShowPanel, { ShowStatusStrip } from "./ShowPanel";
@@ -128,6 +129,7 @@ export default function App() {
 
   return (
     <main className={[onController ? "wide" : "", previewing ? "previewing" : ""].join(" ")}>
+      <OlaSetupNotice />
       <header className="topbar">
         <img className="app-logo" src="/lichtwerk-header.png" alt="licht.werk" width={40} height={40} />
         {simulated && <div className="chip simulated">

@@ -214,3 +214,61 @@ def test_capture_stores_live_values_and_delete_clears_active(patch, clock) -> No
     service.recall(captured.id)
     service.delete(captured.id)
     assert service.active_scene() is None
+
+
+def test_manual_override_after_scene_recall_with_fades(patch, clock) -> None:
+    """RFC Issue #1: Verify scene recall is independent of manual changes.
+    
+    Scenario:
+    1. Recall scene A with intensity 50%
+    2. Manually change intensity to 75% (stops fade if running)
+    3. Recall scene B with intensity 30% with 2-second fade
+    4. Verify final value is exactly 30% (not corrupted)
+    """
+    service, controller, lighting = make_service(patch, clock)
+    
+    # Create two scenes with different intensities
+    scene_a = service.store.create(
+        content(fixtures={"bar-1": {"intensity": 0.5}}, fade_seconds=2)
+    )
+    scene_b = service.store.create(
+        content(fixtures={"bar-1": {"intensity": 0.3}}, fade_seconds=2)
+    )
+    
+    # Iteration 1: Basic test without fading
+    service.recall(scene_a.id, fade_seconds=0)
+    assert controller.state("bar-1")["intensity"] == 0.5
+    
+    controller.set_values("bar-1", {"intensity": 0.75})
+    assert controller.state("bar-1")["intensity"] == 0.75
+    
+    service.recall(scene_b.id, fade_seconds=0)
+    assert controller.state("bar-1")["intensity"] == 0.3
+    
+    # Iteration 2: Test with fades in progress (start fresh with new clock instance)
+    service.release_control()
+    controller.set_values("bar-1", {"intensity": 0.0})  # Reset to zero
+    
+    service.recall(scene_a.id)  # Starts 2-second fade from 0.0 to 0.5
+    initial_val = controller.state("bar-1")["intensity"]
+    assert initial_val == 0.0  # Starts at the current value
+    
+    clock.now += 1.0  # Advance 1 second (mid-fade)
+    controller.tick()
+    val_mid = controller.state("bar-1")["intensity"]
+    assert 0.25 <= val_mid <= 0.5  # Somewhere in the middle of the fade (should be ~0.25)
+    
+    # Manually interrupt the fade
+    controller.set_values("bar-1", {"intensity": 0.75})
+    assert controller.state("bar-1")["intensity"] == 0.75
+    
+    # Recall scene B with its own fade
+    service.recall(scene_b.id)  # Starts fade from 0.75 to 0.3
+    assert controller.state("bar-1")["intensity"] == 0.75  # Still at manual value initially
+    
+    clock.now += 2.0  # Advance 2 seconds (end of fade)
+    controller.tick()
+    val_final = controller.state("bar-1")["intensity"]
+    
+    # The final value must be exactly 0.3 (or very close due to floating point)
+    assert abs(val_final - 0.3) < 0.01, f"Expected 0.3, got {val_final} (CORRUPTION!)"

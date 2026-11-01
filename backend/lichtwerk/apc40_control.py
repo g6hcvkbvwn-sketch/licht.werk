@@ -23,6 +23,7 @@ TAP TEMPO and the TEMPO knob set the shared BPM; METRONOME displays the beat.
 """
 
 import logging
+import colorsys
 import math
 import time
 from collections.abc import Callable
@@ -38,6 +39,7 @@ from .effects import (
     EFFECT_TYPES,
     MOVEMENT_TYPES,
     PARAM_LABELS,
+    SHAPES,
     EffectType,
     fits,
     knob_params,
@@ -146,6 +148,12 @@ def param_level(effect: RunningEffect, name: str) -> float:
         if effect.params.timing == "seconds":
             return math.log(120 / effect.params.seconds) / math.log(120 / 0.25)
         return speed_level(effect.params.beats)
+    if name == "shape":
+        shape_value = getattr(effect.params, name)
+        try:
+            return SHAPES.index(shape_value) / (len(SHAPES) - 1)
+        except (ValueError, IndexError):
+            return 0.0
     return float(getattr(effect.params, name))
 
 
@@ -215,6 +223,7 @@ class Apc40Control:
         self._lock = RLock()
         self._modes = {"heads": "group", "spots": "group"}
         self._selected: Optional[int] = None
+        self._fx_palette = False
         self._fx_open = False  # effects page shown on the pads (SCENE LAUNCH)
         self._fx_type = EffectType.CHASE
         self._fx_track: Optional[int] = None  # strip the device knobs edit on the effects page
@@ -335,6 +344,33 @@ class Apc40Control:
         with self._lock:
             return self._fx_open
 
+    def palette_editing(self) -> bool:
+        with self._lock:
+            return self._selected is not None and self._fx_palette
+
+    def colour_fx_palette(self) -> list[str]:
+        with self._lock:
+            if not self.palette_editing():
+                return []
+            running = self.running_effect(self._selected, EffectType.RAINBOW)
+            return list(running.params.palette) if running else []
+
+    def palette_pads(self) -> dict[int, list[int]]:
+        colours = [self._pad_rgb(pad) for pad in range(hw.PAD_COUNT)]
+        result: dict[int, list[int]] = {}
+        for index, colour in enumerate(self.colour_fx_palette()):
+            rgb = tuple(value / 255 for value in hw.hex_rgb(colour[1:]))
+            pad = min(range(hw.PAD_COUNT), key=lambda p: sum(
+                (a - b) ** 2 for a, b in zip(rgb, colours[p])
+            ))
+            result.setdefault(pad, []).append(index + 1)
+        return result
+
+    @staticmethod
+    def _pad_rgb(pad: int) -> tuple[float, float, float]:
+        colour = hw.colour_pad(pad)
+        return colorsys.hsv_to_rgb(*colour, 1.0) if colour is not None else (1.0, 1.0, 1.0)
+
     def fx_track(self) -> Optional[int]:
         """Remembered strip for FX editing and STOP ALL CLIPS."""
         with self._lock:
@@ -421,7 +457,7 @@ class Apc40Control:
     def device_knobs(self) -> dict[int, tuple[str, str, Optional[float]]]:
         """Device knobs in use now: knob -> (function, label, value; None = unknown)."""
         with self._lock:
-            if self._fx_open:
+            if self._fx_open or self.palette_editing():
                 track = self._fx_track
                 running = self.running_effect(track, self._fx_type) if track is not None else None
                 return {
@@ -600,7 +636,7 @@ class Apc40Control:
         elif hw.CC_DEVICE_KNOB_FIRST <= number < hw.CC_DEVICE_KNOB_FIRST + 8:
             if quiet:
                 return
-            if self._fx_open:
+            if self._fx_open or self.palette_editing():
                 self._effect_knob(number - hw.CC_DEVICE_KNOB_FIRST + 1, value / 127.0)
             elif self._selected is not None:
                 self._device_knob(number - hw.CC_DEVICE_KNOB_FIRST + 1, value / 127.0)
@@ -645,12 +681,21 @@ class Apc40Control:
         elif number == hw.NOTE_RECORD_ARM and self.is_active(track):
             self._flash(track, pressed=True)
         elif number == hw.NOTE_CLIP_STOP:
+            # COLOR pad: toggle color menu for this track, closing any other menu.
             self._fx_open = False
             self._position_track = None
             if self._selected == track:
-                self._selected = None
+                if self._shift and self.palette_editing():
+                    self._fx_palette = False
+                else:
+                    self._selected = None
             elif self.is_active(track) and (self.ring_selected(track) or bool(self.knob_functions(track)) or self._has_colour(track)):
+                # Open color menu for this track (implicitly closes any previous selection).
                 self._selected = track
+                self._fx_palette = not self._shift and self.running_effect(track, EffectType.RAINBOW) is not None
+                if self._fx_palette:
+                    self._fx_track = track
+                    self._fx_type = EffectType.RAINBOW
         elif number == hw.NOTE_TRACK_SELECT:
             if self._shift:
                 self._open_positions(track)
@@ -882,6 +927,19 @@ class Apc40Control:
         self._scenes.recall(assignment.scene)
 
     def _colour_pad(self, track: int, pad: int) -> None:
+        if self.palette_editing():
+            palette = self.colour_fx_palette()
+            if not palette or self._effects is None:
+                raise ValueError("The Colour FX stopped. Close COLOR and launch a Colour FX first.")
+            selected = self.palette_pads().get(pad, [])
+            if selected:
+                palette = [colour for index, colour in enumerate(palette, 1) if index not in selected]
+            else:
+                palette.append("#" + "".join(f"{round(value * 255):02x}" for value in self._pad_rgb(pad)))
+            if not 2 <= len(palette) <= 8:
+                raise ValueError("Colour FX needs 2–8 colours. Add another colour before removing one, or remove one before adding more.")
+            self._effects.set_palette(effect_owner(track), palette, component=self.fx_component(track))
+            return
         if self.ring_selected(track):
             self._ring_colour_pad(track, pad)
             return
@@ -1084,6 +1142,8 @@ class Apc40Control:
         if self._position_track is not None:
             self._open_positions(track)
             return
+        if self.palette_editing():
+            self._selected = None
         if self._fx_track == track:
             self._fx_track = None
         elif self.fixtures(track):
@@ -1185,13 +1245,16 @@ class Apc40Control:
                 state[("note", track, hw.NOTE_RECORD_ARM)] = (
                     hw.LED_ON if track in self._held else hw.LED_OFF
                 )
-                # Blinking = colour page open / strip on the effect knobs; on = colour set / effect running.
+                # COLOR pad LED: blinks when color menu is open for this track,
+                # steady ON if a color was set, OFF otherwise.
                 if self._selected == track:
+                    # Color menu open for this track: blink
                     clip_stop = blink_on
                 else:
+                    # Color menu not open: ON only if a color was set and this track has RGB fixtures
                     clip_stop = self.colour_set(track) and any(has_rgb(f) for f in self.fixtures(track))
                 state[("note", track, hw.NOTE_CLIP_STOP)] = hw.LED_ON if clip_stop else hw.LED_OFF
-                editing = self._fx_open and self._fx_track == track
+                editing = (self._fx_open or self.palette_editing()) and self._fx_track == track
                 position_editing = self._position_track == track
                 fast_blink = int(self._clock() / (BLINK_SECONDS / 2)) % 2 == 0
                 select = fast_blink if editing else (
@@ -1267,6 +1330,12 @@ class Apc40Control:
                     )
                 return colours
             if self._selected is not None:
+                if self.palette_editing():
+                    selected = self.palette_pads()
+                    return {
+                        pad: 0 if pad in selected and not blink_on else hw.colour_pad_velocity(pad)
+                        for pad in range(hw.PAD_COUNT)
+                    }
                 if self.ring_selected(self._selected):
                     track = self._selected
                     colours = {pad: 0 for pad in range(hw.PAD_COUNT)}

@@ -24,6 +24,24 @@ import { isFxPage, type FxPage, type FxComponent } from "./fxApi";
 
 type Event = { kind: "note" | "cc"; channel: number; number: number; value: number };
 
+function ShapeIndicator({ name }: { name: string }) {
+  const paths: Record<string, string> = {
+    Legacy: "M 2 22 L 10 22 Q 13 2 18 2 Q 23 2 26 22 L 34 22 Q 37 2 42 2 Q 47 2 50 22",
+    Sine: "M 2 12 C 6 -1 10 -1 14 12 S 22 25 26 12 S 34 -1 38 12 S 46 25 50 12",
+    Triangle: "M 2 22 L 14 2 L 26 22 L 38 2 L 50 22",
+    Square: "M 2 22 L 2 2 L 14 2 L 14 22 L 26 22 L 26 2 L 38 2 L 38 22 L 50 22",
+    "Saw Up": "M 2 22 L 26 2 L 26 22 L 50 2",
+    "Saw Down": "M 2 2 L 26 22 L 26 2 L 50 22",
+    "One By One": "M 2 22 L 10 22 L 10 2 L 18 2 L 18 22 L 34 22 L 34 2 L 42 2 L 42 22 L 50 22",
+  };
+  return <span className="apc-shape-indicator">
+    {paths[name] && <svg viewBox="0 0 52 24" role="img" aria-label={`${name} waveform`}>
+      <path d={paths[name]} />
+    </svg>}
+    <span>{name}</span>
+  </span>;
+}
+
 /**
  * Sends on-screen events in order. While a request is in flight, newer knob/fader positions
  * replace older ones and relative knob steps (CUE LEVEL, TEMPO) are added up, so dragging never
@@ -91,8 +109,28 @@ const noSelect = { assignMode: false, selected: false, onSelect: () => {} };
 // A strip whose fixtures are currently controlled by the other mode (group vs. single).
 const standby = (s: Apc40Strip) => (s.available && !s.active ? "apc-standby" : "");
 
+// Shorten strip label to first letter (or first letter + number for groups like B1, B2).
+// Examples: "Wash Group" → "W", "Booth A" → "B", "Booth A 1" → "B1", "Booth A 2" → "B2".
+const shortLabel = (label: string): string => {
+  const parts = label.split(/[\s-]+/);
+  const first = parts[0]?.[0]?.toUpperCase() ?? "?";
+  // Look for a trailing number
+  const lastPart = parts[parts.length - 1] ?? "";
+  const number = lastPart.match(/\d+/)?.[0] ?? "";
+  return number ? `${first}${number}` : first;
+};
+
 function rgbCss(rgb: [number, number, number]): string {
-  return `rgb(${rgb.map((c) => Math.round(Math.min(Math.max(c, 0), 1) * 255)).join(", ")})`;
+  // Boost low-intensity colors for visibility on dark monitors.
+  // Use a logarithmic scale: 1% ≈ 25%, 5% ≈ 44%, 10% ≈ 55%, 20% ≈ 68%, 100% = 100%.
+  const BOOST_FLOOR = 0.2;  // Start at 20% brightness (slightly higher than RoomMap's 15%)
+  const BOOST_K = 60;
+  const boost = (c: number) => {
+    if (c <= 0.001) return 0;
+    return BOOST_FLOOR + (1 - BOOST_FLOOR) * (Math.log1p(BOOST_K * Math.min(c, 1)) / Math.log1p(BOOST_K));
+  };
+  const boosted = rgb.map(c => Math.round(Math.min(Math.max(boost(c), 0), 1) * 255));
+  return `rgb(${boosted.join(", ")})`;
 }
 
 /** Current colour of the strip's fixtures (one segment per fixture), or STANDBY when inactive. */
@@ -329,7 +367,7 @@ export default function Apc40View({ scenes }: Props) {
   if (!state) return <p className="muted">Loading APC40…</p>;
 
   const selectedStrip = state.strips.find((s) => s.selected) ?? null;
-  const fxOpen = state.pad_mode === "effects";
+  const fxOpen = state.pad_mode === "effects" || state.fx_palette;
   const fxStrip = state.strips.find((s) => s.fx_knobs) ?? null;
   const fxType = state.effect_types.find((t) => t.selected) ?? null;
   const positionStrip = state.strips.find((s) => s.position_selected);
@@ -338,6 +376,8 @@ export default function Apc40View({ scenes }: Props) {
   const componentName = (s: Apc40Strip | null) => (s?.ring_selected ? "RING" : "BEAM");
   const contextText = state.pad_mode === "positions"
     ? ["POSITIONS", positionStrip?.label ?? "no strip", state.position_mode === "permissions" ? "PERMISSIONS" : "AIM"].join(" | ")
+    : state.fx_palette
+      ? ["FX PALETTE", selectedStrip?.label ?? "-", componentName(selectedStrip), `${state.colour_fx_palette.length}/8 colours`].join(" | ")
     : fxOpen
       ? ["FX", fxType?.label ?? "-", fxStrip ? componentName(fxStrip) : "-", fxStrip?.label ?? "choose a strip"].join(" | ")
       : ["COLOUR", selectedStrip?.label ?? "no strip selected", selectedStrip ? componentName(selectedStrip) : "-"].join(" | ");
@@ -361,14 +401,6 @@ export default function Apc40View({ scenes }: Props) {
         stripActive={state.strips.some((strip) => strip.track === fxDialog.track && strip.active)}
         onClose={() => setFxDialog(null)} />}
       <div className="apc-main">
-        <div className="apc-row apc-titles">
-          {state.strips.map((s) => (
-            <div key={s.track} className={["apc-title", s.available ? "" : "unavailable", standby(s)].join(" ")}>
-              <span className="apc-track">{s.track}</span> {s.label}
-            </div>
-          ))}
-          <div className="apc-title">Master</div>
-        </div>
         <div className="apc-row">
           {state.strips.map((s) => (
             <Knob
@@ -403,6 +435,15 @@ export default function Apc40View({ scenes }: Props) {
           ))}
         </div>
 
+        <div className="apc-row apc-titles">
+          {state.strips.map((s) => (
+            <div key={s.track} className={["apc-title", s.available ? "" : "unavailable", standby(s)].join(" ")}>
+              <span className="apc-track">{s.track}</span> {s.label}
+            </div>
+          ))}
+          <div className="apc-title">Master</div>
+        </div>
+
         <div className="apc-row">
           {state.strips.map((s) => (
             <HwButton
@@ -415,14 +456,11 @@ export default function Apc40View({ scenes }: Props) {
               onPress={(v) => sender.note(s.track, APC40.clipStop, v)}
             />
           ))}
-          <HwButton
-            label={state.blackout ? "BLACKOUT ON" : "BLACKOUT"}
-            lit={state.blackout ? "red" : "off"}
-            className={[state.blackout ? "blackout-pad" : "", live].join(" ")}
-            title="MASTER button: blackout on/off"
-            onPress={(v) => sender.note(1, APC40.master, v)}
-          />
+          <HwButton label="STOP FX" lit="off" disabled={state.fx_track === null}
+            title="STOP ALL CLIPS: stop all effects of the chosen FX strip (preview only while previewing)"
+            onPress={(v) => sender.note(1, APC40.stopAllClips, v)} />
         </div>
+
         <div className="apc-row">
           {state.strips.map((s) => (
             <HwButton
@@ -435,10 +473,15 @@ export default function Apc40View({ scenes }: Props) {
               onPress={(v) => sender.note(s.track, APC40.trackSelect, v)}
             />
           ))}
-          <HwButton label="STOP FX" lit="off" disabled={state.fx_track === null}
-            title="STOP ALL CLIPS: stop all effects of the chosen FX strip (preview only while previewing)"
-            onPress={(v) => sender.note(1, APC40.stopAllClips, v)} />
+          <HwButton
+            label={state.blackout ? "BLACKOUT ON" : "BLACKOUT"}
+            lit={state.blackout ? "red" : "off"}
+            className={[state.blackout ? "blackout-pad" : "", live].join(" ")}
+            title="MASTER button: blackout on/off"
+            onPress={(v) => sender.note(1, APC40.master, v)}
+          />
         </div>
+
         <div className="apc-buttons">
           {state.strips.map((s) => (
             <div className="apc-strip-buttons" key={s.track}>
@@ -539,6 +582,13 @@ export default function Apc40View({ scenes }: Props) {
         )}
 
         <div className="apc-context" aria-label={`Context: ${contextText}`}>{contextText}</div>
+        {state.fx_palette && <div className="apc-palette-help">
+          <div className="apc-palette-swatches">{state.colour_fx_palette.map((colour, index) =>
+            <span key={`${index}:${colour}`} style={{ backgroundColor: colour }} title={`${index + 1}: ${colour}`}>{index + 1}</span>
+          )}</div>
+          Click colours to add/remove (2–8). Selected colours blink; numbers show order.
+          Edits use a fixed palette. Store current FX to save. SHIFT+COLOR edits fixture colour.
+        </div>}
         <div className="apc-device">
           {state.knobs.map((k) => (
             <Knob
@@ -549,7 +599,8 @@ export default function Apc40View({ scenes }: Props) {
               endless={false}
               hue={k.function === "hue"}
               label={k.label ?? ""}
-              sublabel={k.display ?? ""}
+              sublabel={k.function === "shape" && k.display
+                ? <ShapeIndicator name={k.display} /> : k.display ?? ""}
               onValue={(v) => sender.absolute(1, APC40.deviceKnobFirst + k.knob - 1, v)}
               onSteps={() => {}}
             />
@@ -683,6 +734,7 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
         "apc-pad",
         pad.included ? "included" : "",
         pad.active ? "active" : "",
+        pad.kind === "fx_colour" && pad.active ? "apc-blink" : "",
         pad.missing ? "missing" : "",
         pressed ? "pressed" : "",
       ].join(" ")}
@@ -691,10 +743,10 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
         gridRow: Math.floor(pad.pad / 8) + 1,
         ...(pad.colour ? { background: css(pad.colour), borderColor: css(pad.colour) } : {}),
       }}
-      aria-pressed={pad.kind === "zone" ? pad.included : undefined}
+      aria-pressed={pad.kind === "zone" ? pad.included : pad.kind === "fx_colour" ? pad.active : undefined}
       title={pad.kind === "zone"
         ? `${pad.label}: ${pad.explicitly_excluded ? "explicitly excluded" : pad.included ? "included" : "not included"}. Use Aim/Permissions mode; SHIFT + press edits.`
-        : undefined}
+        : pad.kind === "fx_colour" ? (pad.active ? `Remove palette colour ${pad.label}` : "Add colour to FX palette") : undefined}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
         setPressed(true);
@@ -720,4 +772,3 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
     </button>
   );
 }
-

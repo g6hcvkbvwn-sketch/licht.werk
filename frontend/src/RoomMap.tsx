@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { getRoomMap, placeOnMap, removeFromMap, type MapFixture, type RoomMapState } from "./api";
+import { boostedLevel, shortName } from "./monitorDisplay";
 
 /**
  * Room seen from above: the DJ booth at the bottom, the far side at the top, x to the DJ's right.
@@ -22,20 +23,8 @@ function hzText(hz: number | null): string {
   return hz ? `${hz < 10 ? hz.toFixed(1) : Math.round(hz)} Hz` : "off";
 }
 
-// Display-only brightness boost: the club mostly runs at 5-20 %, which would be nearly black on
-// screen. A logarithmic curve spreads the low range and any light that is on gets at least
-// BOOST_FLOOR brightness (1 % ≈ 25 %, 5 % ≈ 44 %, 10 % ≈ 55 %, 20 % ≈ 68 %, 50 % ≈ 86 %, 100 % = 100 %).
-// Hue is kept; only the drawing changes, never the DMX output.
-const BOOST_FLOOR = 0.15;
-const BOOST_K = 60;
-
 function level(rgb: [number, number, number] | null): number {
   return rgb ? Math.min(Math.max(...rgb, 0), 1) : 0;
-}
-
-function boostedLevel(actual: number): number {
-  if (actual <= 0.001) return 0;
-  return BOOST_FLOOR + (1 - BOOST_FLOOR) * (Math.log1p(BOOST_K * Math.min(actual, 1)) / Math.log1p(BOOST_K));
 }
 
 function css(rgb: [number, number, number] | null): string {
@@ -49,10 +38,6 @@ function css(rgb: [number, number, number] | null): string {
 
 function pct(rgb: [number, number, number] | null): string {
   return `${Math.round(level(rgb) * 100)} %`;
-}
-
-function shortName(name: string): string {
-  return name.length > 12 ? `${name.slice(0, 11)}…` : name;
 }
 
 export default function RoomMap({ compact = false }: { compact?: boolean }) {
@@ -288,7 +273,8 @@ function RoomMonitor({ compact, mode, state, onState, big = false }: {
           </g>
         </g>}
         <text x={x} y={cy + radius * 2.1} className="map-label" fontSize={radius * 0.95}>
-          {shortName(f.name)}
+          <title>{f.name}</title>
+          {shortName(f)}
         </text>
         {level(rgb) > 0.001 && (
           <text x={x} y={cy + radius * 3.1} className="map-level" fontSize={radius * 0.8}>

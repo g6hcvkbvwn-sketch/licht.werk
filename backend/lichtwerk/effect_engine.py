@@ -8,10 +8,12 @@ from threading import Lock, local
 from typing import Optional
 
 from .effects import (
+    COLOUR_TYPES,
     EFFECT_TYPES,
     MOVEMENT_TYPES,
     PRESET_COUNT,
     PRESETS,
+    SHAPES,
     EffectComponent,
     EffectParams,
     EffectType,
@@ -349,6 +351,10 @@ class EffectEngine:
                 }
             elif name == "seconds":
                 update = {"seconds": seconds_from_level(level)}
+            elif name == "shape":
+                shape_index = round(level * (len(SHAPES) - 1))
+                shape_value = SHAPES[min(max(shape_index, 0), len(SHAPES) - 1)]
+                update = {"shape": shape_value}
             elif name in ("size", "spread", "softness", "maximum"):
                 update = {name: float(level)}
             else:
@@ -383,6 +389,21 @@ class EffectEngine:
                 launched_at=launched_at, launch_beat=launch_beat,
             )
             return True
+
+    def set_palette(
+        self, owner: str, palette: list[str], *, component: EffectComponent = "beam",
+    ) -> None:
+        """Edit runtime colour FX without restarting its clock or changing its preset."""
+        with self._lock:
+            effects = self._editing()
+            key = (owner, EffectType.RAINBOW, component)
+            effect = effects.get(key)
+            if effect is None or effect.kind not in COLOUR_TYPES:
+                raise ValueError("No Colour FX is running on this strip. Launch one first.")
+            params = EffectParams.model_validate({
+                **effect.params.model_dump(), "palette": palette, "colour_mode": "palette",
+            })
+            effects[key] = replace(effect, params=params)
 
     def set_active(
         self, owner: str, active: bool, *, component: Optional[EffectComponent] = None

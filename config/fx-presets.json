@@ -70,6 +70,46 @@
         }
       },
       "component": "beam"
+    },
+    {
+      "target": "moving-heads",
+      "page": "circle",
+      "row": 3,
+      "definition": {
+        "name": "Mirror circle",
+        "kind": "circle",
+        "params": {
+          "beats": 4.0,
+          "size": 0.6,
+          "spread": 0.5,
+          "softness": 0.0,
+          "timing": "beats",
+          "seconds": 4.0,
+          "shape": "legacy",
+          "maximum": 1.0,
+          "selection": "all",
+          "order": [],
+          "reverse": false,
+          "mirror": "none",
+          "mirror_alternate": true,
+          "colour_mode": "base",
+          "palette": [
+            "#0000ff",
+            "#ff00ff"
+          ],
+          "transition": "smooth",
+          "target_ids": [
+            "dance-floor-center",
+            "floor-left-lower",
+            "floor-left-upper",
+            "floor-right-lower"
+          ],
+          "travel": 4.0,
+          "hold": 4.0,
+          "pattern": "none"
+        }
+      },
+      "component": "beam"
     }
   ]
 }

@@ -16,3 +16,4 @@ logs/
 # Scene save backups and interrupted atomic writes
 config/*.bak
 config/.*.tmp
+dist-app/

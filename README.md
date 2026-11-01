@@ -161,6 +161,12 @@ python -m pytest
 
 Tests use only the simulated adapter and do not require OLA, the Botex, Resolume, or fixtures.
 
+Monitor label and brightness regression tests (from the repository root):
+
+```sh
+cd frontend && node --test tests/monitorDisplay.test.mjs
+```
+
 ## Logging
 
 The server writes startup and unexpected-error diagnostics to the console and to the rotating local log `logs/lichtwerk.log`. Logs are local runtime data, ignored by Git, and are not uploaded or sent to Copilot.
@@ -219,7 +225,9 @@ The **Controller** page shows the on-screen APC40 MKII (the Xone:K2 tab is on ho
 **RFC controller workflow (29 October 2026):**
 - **COLOR** selects colour pads. **SCENE LAUNCH 1/2/3** selects Dimmer/Colour/Move; buttons 4/5 are unused. Each page has five presets per strip. Press a pad to start/stop it; TRACK SELECT chooses the FX editing strip. **STOP FX / STOP ALL CLIPS** stops that strip's selected beam/ring FX context, not its scene sequence. One effect per family/component runs on a fixture; starting another replaces the conflicting effect as a whole.
 - Track FX indication blinks while FX run, including outside the FX page. Faster blinking indicates the FX editing strip.
-- Only the two left device-knob columns are used: physical knobs **1, 2, 5, 6**. FX functions are Rate, Depth/Size, Spread, Softness where applicable; rate is shown in beats or seconds per cycle. Default tempo is 128 BPM; TAP adjusts it and METRONOME displays the beat (the physical TAP button has no LED).
+- The three left device-knob columns form a two-row, three-column block: **1 Rate, 2 Depth/Size, 3 Shape** above **5 Spread, 6 Softness, 7 Maximum**, where applicable. On screen, labels sit underneath each knob; Shape shows its waveform and name, Maximum its percentage, and Rate the beats or seconds per cycle. Fixture controls still use knobs 1, 2, 5, 6. Default tempo is 128 BPM; TAP adjusts it and METRONOME displays the beat (the physical TAP button has no LED).
+- **Fast Colour FX picker:** launch a Colour FX, then press that strip's COLOR. Click colour pads to add/remove palette entries (2–8); selected colours blink and show their order. Both Colour generators switch to fixed-palette mode when edited. Changes affect only the running FX, including in preview; close COLOR, return to the Colour FX editor, and use **Store current FX** to save them. **SHIFT+COLOR** opens ordinary fixture-colour control. Ring selection edits ring FX independently. If the FX stops, relaunch it rather than continuing to edit a stopped palette.
+- Live/Preview monitor labels use **W, B1/B2, M1/M2, H**; full names remain in tooltips and on controller tracks. Dim blue at 5–10% is lifted visually without changing actual output, hue or percentage readouts.
 - **SHIFT + TRACK SELECT** on a head/group opens target/zone pads in AIM mode. Keyboard Shift also works. First 24 pads are targets; last 16 are zones. UP/AIM selects a destination without changing permissions. DOWN/PERMISSIONS cycles each zone: not included -> included -> explicitly excluded -> not included, without moving heads. SHIFT + an existing pad edits it. Several zones can be included together.
 - **Store current position** in the target dialog fills estimated x/y/z from the calibrated head's commanded beam intersection with the first room wall, floor or ceiling. Choose a head when operating the group, wait for real movement to settle, review the coordinates and press Save. This cannot locate an object inside the room; enter measured coordinates for those targets. Missing geometry/calibration produces an error, never guessed coordinates.
 - **Edit/delete target/zone** in the same controller menu edits names/geometry without changing IDs. Delete asks for confirmation and removes the item from all assignments. Finish preview before capturing or changing definitions.
@@ -343,3 +351,14 @@ For concrete club checks and cleanup steps, use [testing.rfc](testing.rfc).
 The Xone:K2 tab shows the Xone:K2 as it is assigned: column titles (Master, LED bar 1, Moving heads, DJ spots), what every knob, button and fader does, live values and the button LED colours. You can operate everything with the mouse: drag knobs and faders up/down (or scroll), hold buttons. The on-screen controller and the real K2 do exactly the same thing. **ASSIGN CONTROLS** → tap a control → choose action and fixtures/scene → Save. The MIDI channel used by the page is `midi.channel` in `config/app.json` (default 15). The full first assignment is listed in `project.md` (Milestone 7 section).
 
 If `pip install` of `python-rtmidi` fails on macOS with a linker error, build with the older SDK: `SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk .venv/bin/pip install -e ".[dev]"`.
+
+## Mac app (LichtWerk.app)
+
+Build: `./packaging/build_app.sh` creates `dist-app/LichtWerk.app` and `dist-app/LichtWerk-macOS-arm64.zip` (Apple Silicon, unsigned). The icon comes from `frontend/public/lichtwerk-logo.png`.
+
+Install: unzip, drag `LichtWerk.app` into Applications (or the Dock). First launch on another Mac: right-click the app, choose Open, then Open again (the app is unsigned).
+
+- Settings, scenes, sequences, room and pad layout live in `~/Library/Application Support/LichtWerk/config/`; logs in `.../logs/`. On first start the app copies its built-in defaults there; existing files are never overwritten, so app updates keep your settings. Delete that folder to reset.
+- DMX needs OLA (`brew install ola`). The app starts `olad` itself with its own config in `.../LichtWerk/ola/` (Art-Net on interface IP `2.0.0.1`, output port 0 to universe 5; edit `ola-artnet.conf` there if the Mac's interface address differs). If `olad` already runs, the app uses it. Without OLA the app shows a hint and runs in simulation.
+- Physical output is disabled by default, independently of MIDI detection. `OUTPUT DISABLED` is expected while `"physical_output_enabled": false` in `~/Library/Application Support/LichtWerk/config/app.json`. For deliberate hardware operation, set it to `true` with `"output_mode": "ola"` and allowed universe `[5]`, then restart the app. This enables DMX on universe 5 (the current patch uses channels 1–100); startup remains in blackout. Release blackout only when ready. There is no separate ARM step; RETRY OUTPUT is for output failures.
+- If MIDI reports `No module named 'mido.backends.rtmidi'`, rebuild the app with the current build script: the dynamically loaded Mido backend must be explicitly bundled. Changing the Xone:K2 device setting is not needed for APC40 detection.

@@ -54,6 +54,7 @@ from .scene_api import GroupInfo, build_router
 from .scene_service import SceneService
 from .scenes import SceneStore
 from .sequences import SequenceStore
+from . import ola_runtime
 from .sequence_service import SequenceService
 from .show_api import build_router as build_show_router
 from .service import LightingService
@@ -361,6 +362,7 @@ def create_app(
     app.state.sequence_service = sequences
     app.include_router(build_router(controller, scenes))
     app.include_router(build_show_router(scenes, sequences))
+    app.include_router(ola_runtime.build_router())
     app.include_router(build_rig_router(positions, rig_store, controller))
     app.include_router(build_apc40_router(apc40_control, service, controller_status))
     app.include_router(build_fx_router(apc40_control, fx_service))
