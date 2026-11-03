@@ -17,6 +17,8 @@ from test_zones import HEAD, make_controller, make_rig
 def tour():
     patch = club_patch()
     rig = make_rig(patch)
+    document = rig.room_file()
+    rig.set_room_file(document.model_copy(update={"zones": []}))
     areas = [
         Zone(id=id, name=id, surface="floor", corner={"x": x, "y": y}, length=1.0, width=1.0)
         for id, x, y in (("a", 0.5, 0.5), ("b", 4.0, 5.0), ("c", 1.0, 6.0))

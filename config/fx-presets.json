@@ -110,6 +110,42 @@
         }
       },
       "component": "beam"
+    },
+    {
+      "target": "moving-heads",
+      "page": "circle",
+      "row": 2,
+      "definition": {
+        "name": "Medium figure 8",
+        "kind": "figure8",
+        "params": {
+          "beats": 4.0,
+          "size": 0.6,
+          "spread": 0.0,
+          "softness": 0.0,
+          "timing": "beats",
+          "seconds": 4.0,
+          "shape": "legacy",
+          "maximum": 1.0,
+          "selection": "all",
+          "order": [],
+          "reverse": false,
+          "mirror": "none",
+          "mirror_alternate": true,
+          "colour_mode": "base",
+          "palette": [
+            "#0000ff",
+            "#ff00ff"
+          ],
+          "transition": "smooth",
+          "target_ids": [],
+          "travel": 4.0,
+          "hold": 4.0,
+          "pattern": "current"
+        }
+      },
+      "component": "beam"
     }
-  ]
+  ],
+  "combos": []
 }

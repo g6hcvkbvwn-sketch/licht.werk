@@ -10,6 +10,8 @@ from .scenes import PersistenceError
 from .sequence_service import SequenceService
 from .sequences import Sequence, SequenceContent
 from .positioning import PositioningError
+from .quantize import Quantizer
+from .live_modifiers import LiveModifiers, ModifierSettings
 
 
 class GlobalsRequest(BaseModel):
@@ -23,12 +25,19 @@ class ReleaseRequest(BaseModel):
     attributes: Optional[list[str]] = None
 
 
+class QuantizeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    enabled: bool
+
+
 class PlaybackRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     preview: Optional[bool] = None
 
 
-def build_router(scenes: SceneService, sequences: SequenceService) -> APIRouter:
+def build_router(scenes: SceneService, sequences: SequenceService,
+                 quantizer: Optional[Quantizer] = None,
+                 modifiers: Optional[LiveModifiers] = None) -> APIRouter:
     router = APIRouter()
 
     def translate(error: Exception) -> HTTPException:
@@ -44,6 +53,10 @@ def build_router(scenes: SceneService, sequences: SequenceService) -> APIRouter:
         return {
             "globals": scenes.globals(), "locks": scenes.locks(),
             "sequence": sequences.status(), "live_sequence": sequences.status(live=True),
+            "look_notice": scenes.look_notice(),
+            "beat": sequences.beat(),
+            "quantize": quantizer.state() if quantizer is not None else None,
+            "modifiers": modifiers.state() if modifiers is not None else None,
         }
 
     @router.get("/api/show")
@@ -55,6 +68,26 @@ def build_router(scenes: SceneService, sequences: SequenceService) -> APIRouter:
         try:
             scenes.set_globals(command.fixtures)
         except (KeyError, ValueError) as error:
+            raise translate(error) from error
+        return show_state()
+
+    @router.put("/api/show/quantize")
+    def set_quantize(command: QuantizeRequest) -> dict:
+        if quantizer is None:
+            raise HTTPException(409, detail="Quantize is not available.")
+        try:
+            quantizer.set_enabled(command.enabled)
+        except ValueError as error:
+            raise translate(error) from error
+        return show_state()
+
+    @router.put("/api/show/modifiers")
+    def set_modifiers(command: ModifierSettings) -> dict:
+        if modifiers is None:
+            raise HTTPException(409, detail="Live modifiers are not available.")
+        try:
+            modifiers.set(command)
+        except ValueError as error:
             raise translate(error) from error
         return show_state()
 
@@ -102,7 +135,7 @@ def build_router(scenes: SceneService, sequences: SequenceService) -> APIRouter:
         actions = {
             "start": lambda: sequences.start(sequence_id), "pause": sequences.pause,
             "resume": sequences.resume, "stop": sequences.stop, "restart": sequences.restart,
-            "apply": sequences.apply_now,
+            "apply": sequences.apply_now, "next": sequences.next,
         }
         if action not in actions:
             raise HTTPException(404, detail="Unknown sequence action.")
@@ -117,6 +150,10 @@ def build_router(scenes: SceneService, sequences: SequenceService) -> APIRouter:
                 current = sequences.status()
                 if action != "start" and (current is None or current["id"] != sequence_id):
                     raise HTTPException(409, detail="This sequence is not the selected runtime sequence.")
+                if (action == "next" and quantizer is not None and current["status"] in ("running", "paused")
+                        and quantizer.submit("next", "NEXT", lambda held: sequences.next(),
+                                             preview=scenes._controller.editing_preview())):
+                    return sequences.status()
                 return actions[action]()
             except (ValueError, KeyError, PositioningError) as error:
                 raise translate(error) from error

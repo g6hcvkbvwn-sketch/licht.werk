@@ -3,7 +3,8 @@
     {
       "pad": 0,
       "scene": "booth-standard",
-      "colour": "blue"
+      "colour": "blue",
+      "accent": "hold"
     },
     {
       "pad": 1,
@@ -118,7 +119,23 @@
     {
       "pad": 23,
       "scene": "strobe-white-full",
-      "colour": "white"
+      "colour": "white",
+      "accent": "hold"
+    },
+    {
+      "pad": 24,
+      "scene": "test-look",
+      "colour": "blue"
+    },
+    {
+      "pad": 25,
+      "scene": "test-booth",
+      "colour": "red"
+    },
+    {
+      "pad": 26,
+      "scene": "move-test",
+      "colour": "blue"
     }
   ],
   "sequence_pads": [
@@ -241,6 +258,11 @@
       "pad": 23,
       "sequence": "peak-cycle",
       "colour": "orange"
+    },
+    {
+      "pad": 24,
+      "sequence": "build",
+      "colour": "green"
     }
   ]
 }

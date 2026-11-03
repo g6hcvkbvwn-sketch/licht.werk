@@ -22,7 +22,7 @@ def test_restart_rest_retains_permissions_without_false_aim_and_can_launch_fx(tm
         setup = calibrated().model_dump()
         setup["rest"] = {"pan": 0.5, "tilt": 0.9}
         rig.set_head(head, HeadSetup.model_validate(setup))
-    assignment = HeadAssignment(aim_zone="floor-area", include_zones=included)
+    assignment = rig.room_file().permissions(HeadAssignment(aim_zone="floor-area", include_zones=included))
     rig.set_position_settings(
         {HEAD: assignment, HEAD2: assignment}, {"apc40:2": assignment},
     )
@@ -57,6 +57,9 @@ def test_restart_rest_retains_permissions_without_false_aim_and_can_launch_fx(tm
         note(hw.NOTE_SHIFT)
         note(hw.NOTE_TRACK_SELECT, channel=2)
         view = note(hw.NOTE_SHIFT, 0)
+        assert view["pads"][25]["included"]
+        assert not view["pads"][25]["active"]  # Aim mode during Move FX: bright = route stop
+        view = note(hw.NOTE_DEVICE_LOCK)
         assert view["pads"][25]["active"]
 
 

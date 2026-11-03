@@ -41,6 +41,7 @@ class CaptureRequest(BaseModel):
     attributes: Optional[list[str]] = None
     include_haze: bool = False
     include_position: bool = False
+    include_fx: bool = False  # capture the running FX too (a look)
 
     @field_validator("fade_beats")
     @classmethod
@@ -135,6 +136,16 @@ def build_router(controller: FixtureController, scenes: SceneService) -> APIRout
             raise not_found(error) from error
         except PersistenceError as error:
             raise save_failed(error) from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @router.post("/api/scenes/capture-draft", response_model=SceneContent)
+    def capture_draft(command: CaptureRequest) -> SceneContent:
+        """The live state as an unsaved scene, for the editor's Capture live."""
+        try:
+            return scenes.live_content(**command.model_dump())
+        except KeyError as error:
+            raise not_found(error) from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 

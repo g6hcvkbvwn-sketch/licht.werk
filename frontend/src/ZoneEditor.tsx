@@ -5,7 +5,6 @@ import type { RoomDocument, Surface, Zone } from "./api";
 type ZoneDraft = {
   name: string;
   surface: Surface;
-  mode: "include" | "exclude";
   cornerLength: string;
   cornerWidth: string;
   length: string;
@@ -14,7 +13,7 @@ type ZoneDraft = {
 
 const NEW = "__new__";
 const EMPTY: ZoneDraft = {
-  name: "", surface: "floor", mode: "exclude", cornerLength: "", cornerWidth: "", length: "", width: "",
+  name: "", surface: "floor", cornerLength: "", cornerWidth: "", length: "", width: "",
 };
 
 export const toId = (name: string) =>
@@ -25,7 +24,6 @@ const toDraft = (zone: Zone): ZoneDraft => {
   return {
     name: zone.name,
     surface: zone.surface,
-    mode: zone.mode,
     cornerLength: String(zone.corner[axes.length]),
     cornerWidth: String(zone.corner[axes.width]),
     length: String(zone.length),
@@ -70,7 +68,7 @@ export default function ZoneEditor({ room, run }: Props) {
         id,
         name: d.name.trim(),
         surface: d.surface,
-        mode: d.mode,
+        mode: room.zones.find((zone) => zone.id === id)?.mode ?? "exclude",
         corner: {
           [axes.length]: number(d.cornerLength, `Corner ${axes.length}`),
           [axes.width]: number(d.cornerWidth, `Corner ${axes.width}`),
@@ -89,7 +87,7 @@ export default function ZoneEditor({ room, run }: Props) {
     const d = drafts[key] ?? EMPTY;
     const axes = SURFACE_AXES[d.surface];
     return (
-      <div key={key} className={`zone-row ${d.mode}`}>
+      <div key={key} className="zone-row">
         <input
           placeholder="Zone name" maxLength={80} value={d.name}
           onChange={(e) => update(key, { name: e.target.value })}
@@ -98,10 +96,6 @@ export default function ZoneEditor({ room, run }: Props) {
           {(Object.keys(SURFACE_AXES) as Surface[]).map((s) => (
             <option key={s} value={s}>{SURFACE_AXES[s].label}</option>
           ))}
-        </select>
-        <select value={d.mode} onChange={(e) => update(key, { mode: e.target.value as ZoneDraft["mode"] })}>
-          <option value="exclude">Exclude (never enter)</option>
-          <option value="include">Include (stay inside)</option>
         </select>
         <label>
           corner {axes.length}
@@ -130,7 +124,8 @@ export default function ZoneEditor({ room, run }: Props) {
       <h2>Zones</h2>
       <p className="muted">
         A zone is a rectangle on the floor, ceiling or a wall. Corner = the corner closest to the origin, in room
-        coordinates (m); length and width run along the axes shown. Assign zones to heads on the Positions page.
+        coordinates (m); length and width run along the axes shown. New zones are excluded for every head.
+        Include them per head/strip in Aim / Permissions; zone definitions have no global permission.
       </p>
       <div className="zone-list">
         {room.zones.map((zone) => row(zone.id, zone))}

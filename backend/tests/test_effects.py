@@ -472,7 +472,7 @@ def test_api_effects_page_and_typed_bpm(client) -> None:
         json={"kind": "note", "channel": 2, "number": hw.NOTE_TRACK_SELECT, "value": 127},
     ).json()
     assert view["fx_track"] == 2
-    assert [t["available"] for t in view["effect_types"]] == [True] * 3
+    assert [t["available"] for t in view["effect_types"]] == [True] * 4
     assert view["pads"][1]["label"] == "Pulse" and view["knobs"][0]["label"] == "Rate"
     assert view["strips"][1]["fx_knobs"] is True
     view = client.post(

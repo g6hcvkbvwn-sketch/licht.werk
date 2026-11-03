@@ -34,6 +34,8 @@ from .midi_api import build_router as build_midi_router
 from .apc40 import introduction
 from .apc40_api import build_router as build_apc40_router
 from .apc40_control import Apc40Control
+from .live_modifiers import LiveModifiers
+from .looks import LookPlayer
 from .apc40_feedback import Apc40Feedback
 from .apc40_pads import PadStore
 from .midi_control import MidiControl
@@ -256,6 +258,17 @@ def create_app(
         controller, scenes, service, positions, apc40_pads, preview=preview, effects=effects,
         fx_service=fx_service,
     )
+    scenes.looks = LookPlayer(apc40_control, scenes)
+    modifiers = LiveModifiers(controller, effects, {
+        strip.track: (apc40_control.label(strip.track), [
+            fixture.patch.id for fixture in apc40_control.fixtures(strip.track)
+            if fixture.patch.enabled and {"red", "green", "blue"} <= set(fixture.mode.attributes())
+        ])
+        for strip in apc40_control.strips
+        if any(fixture.patch.enabled and {"red", "green", "blue"} <= set(fixture.mode.attributes())
+               for fixture in apc40_control.fixtures(strip.track))
+    }, sequences)
+    scenes.snapshot_listeners.append(apc40_control.scene_applied)
     midi_channel = settings.midi.channel if settings.midi is not None else 15
     midi_input: Optional[MidiInput] = None
     apc40_input: Optional[MidiInput] = None
@@ -361,7 +374,7 @@ def create_app(
     app.state.scene_service = scenes
     app.state.sequence_service = sequences
     app.include_router(build_router(controller, scenes))
-    app.include_router(build_show_router(scenes, sequences))
+    app.include_router(build_show_router(scenes, sequences, apc40_control.quantizer, modifiers))
     app.include_router(ola_runtime.build_router())
     app.include_router(build_rig_router(positions, rig_store, controller))
     app.include_router(build_apc40_router(apc40_control, service, controller_status))

@@ -59,6 +59,44 @@ def test_union_subtracts_exclusion_and_undefined_areas_are_dark():
     assert lighting.read_output(5)[INTENSITY] == 0
 
 
+def test_new_zone_is_excluded_for_active_and_saved_strips_and_overlap_stays_dark(tmp_path):
+    rig, controller, lighting, positions = system(tmp_path)
+    positions.initialize_strips({"group": "moving-heads", "single": HEAD}, {"group": "moving-heads"})
+    included = HeadAssignment(aim_zone=INCLUDE.id)
+    positions.set_strip_assignment("group", "moving-heads", included)
+    positions.set_strip_assignment("single", HEAD, included)
+    controller.apply({HEAD: {"intensity": 1.0}}, 0)
+    assert lighting.read_output(5)[INTENSITY] == 255
+    before = controller.snapshot()
+    overlap = INCLUDE.model_copy(update={"id": "new-area", "name": "New area"})
+    rig.save_zone(overlap)
+    controller.refresh_all()
+    assert controller.snapshot() == before
+    assert lighting.read_output(5)[INTENSITY] == 0
+    assert "new-area" in rig.assignment(HEAD).exclude_zones
+    assert all("new-area" in positions.strip_assignment(owner).exclude_zones for owner in ("group", "single"))
+    restored = RigStore.load(tmp_path / "room.json", tmp_path / "heads.json", controller.patch)
+    assert restored.room_file().strip_assignments == rig.room_file().strip_assignments
+    positions.set_strip_assignment("group", "moving-heads", HeadAssignment(
+        aim_zone=INCLUDE.id, include_zones=[INCLUDE.id, "new-area"],
+    ), recall=False)
+    assert lighting.read_output(5)[INTENSITY] == 255
+
+
+def test_legacy_neutral_zones_load_as_excluded_without_rewriting_file(tmp_path):
+    patch = make_patch()
+    rig = make_rig(patch, tmp_path, assignments={HEAD: HeadAssignment(include_zones=[INCLUDE.id])})
+    document = rig.room_file()
+    # An old file can omit zones from both permission lists.
+    document.assignments[HEAD].exclude_zones = []
+    path = tmp_path / "room.json"
+    original = json.dumps(document.model_dump(mode="json"))
+    path.write_text(original)
+    loaded = RigStore.load(path, tmp_path / "heads.json", patch)
+    assert loaded.assignment(HEAD).exclude_zones == ["booth"]
+    assert path.read_text() == original
+
+
 def test_missing_geometry_and_flash_fail_closed_but_override_is_explicit():
     rig, controller, lighting, _ = system()
     controller.apply({HEAD: {"pan": 0.0, "tilt": 0.5, "intensity": 1.0}}, 0)
@@ -132,7 +170,7 @@ def test_selecting_forbidden_target_stops_previously_started_movement(clock):
 
 def test_first_strip_edit_is_immediately_effective_without_prior_mode_switch():
     rig, _, _, positions = system()
-    chosen = HeadAssignment(aim_zone=INCLUDE.id)
+    chosen = rig.room_file().permissions(HeadAssignment(aim_zone=INCLUDE.id))
     positions.set_strip_assignment("initial-group", "moving-heads", chosen)
     assert rig.assignment(HEAD) == rig.assignment(HEAD2) == chosen
     assert positions.strip_assignment("initial-group") == chosen
@@ -201,7 +239,7 @@ def test_preview_stages_permissions_aims_and_disk_until_go(tmp_path):
     preview.start()
     assignment = HeadAssignment(aim_target="in-zone", exclude_zones=["booth"])
     positions.set_strip_assignment("single", HEAD, assignment)
-    assert positions.strip_assignment("single") == assignment
+    assert positions.strip_assignment("single") == rig.room_file().permissions(assignment)
     assert rig.assignment(HEAD, live=True).aim_zone == INCLUDE.id
     assert rig.assignment(HEAD).aim_target == "in-zone"
     assert (tmp_path / "room.json").read_text() == committed
@@ -214,7 +252,7 @@ def test_preview_stages_permissions_aims_and_disk_until_go(tmp_path):
     preview.go()
     saved = json.loads((tmp_path / "room.json").read_text())
     assert saved["strip_assignments"]["single"]["aim_target"] == "in-zone"
-    assert rig.assignment(HEAD, live=True) == assignment
+    assert rig.assignment(HEAD, live=True) == rig.room_file().permissions(assignment)
     assert lighting.read_output(5)[INTENSITY] == 255
 
 
@@ -222,12 +260,12 @@ def test_group_and_single_settings_remain_independent_and_survive_reload(tmp_pat
     rig, controller, _, positions = system(tmp_path)
     rig.set_head(HEAD2, calibrated())
     positions.activate_strips({"one": HEAD, "two": HEAD2})
-    first = HeadAssignment(aim_target="clear", include_zones=[INCLUDE.id])
-    second = HeadAssignment(aim_target="in-zone", exclude_zones=["booth"])
+    first = rig.room_file().permissions(HeadAssignment(aim_target="clear", include_zones=[INCLUDE.id]))
+    second = rig.room_file().permissions(HeadAssignment(aim_target="in-zone", exclude_zones=["booth"]))
     positions.set_strip_assignment("one", HEAD, first)
     positions.set_strip_assignment("two", HEAD2, second)
     positions.activate_strips({"group": "moving-heads"})
-    group = HeadAssignment(aim_zone=INCLUDE.id)
+    group = rig.room_file().permissions(HeadAssignment(aim_zone=INCLUDE.id))
     positions.set_strip_assignment("group", "moving-heads", group)
     assert rig.assignment(HEAD) == rig.assignment(HEAD2) == group
     assert positions.strip_assignment("one") == first
@@ -271,6 +309,7 @@ def test_initialization_seeds_group_and_singles_without_recalling_saved_aims(tmp
         HEAD: HeadAssignment(aim_target="clear", include_zones=[INCLUDE.id]),
         HEAD2: HeadAssignment(aim_target="in-zone", exclude_zones=["booth"]),
     }
+    original = {head: rig.room_file().permissions(value) for head, value in original.items()}
     rig.set_assignments(original)
     before = controller.snapshot()
     positions.initialize_strips(

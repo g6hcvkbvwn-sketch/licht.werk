@@ -4,7 +4,8 @@ import logging
 import math
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from threading import Lock, local
+from threading import RLock, local
+from uuid import uuid4
 from typing import Optional
 
 from .effects import (
@@ -35,7 +36,7 @@ from .rings import (
     segment_colour_attributes,
     segment_participant,
 )
-from .room import RigStore
+from .room import RigStore, target_in_included_areas
 from .tempo import TempoClock
 from .zones import Zone
 
@@ -59,6 +60,10 @@ class RunningEffect:
     positions: tuple[int, ...] = ()
     participant_count: int = 0
     component: EffectComponent = "beam"
+    combo_id: str | None = None
+    combo_name: str | None = None
+    combo_slot: int | None = None
+    combo_families: tuple[EffectType, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -75,13 +80,44 @@ class EffectEngine:
         self._patch = patch
         self._tempo = tempo
         self._rig = rig
-        self._lock = Lock()
+        self._lock = RLock()
         self._live: dict[EffectKey, RunningEffect] = {}
         self._preview: Optional[dict[EffectKey, RunningEffect]] = None
+        # Accent FX (render-time, live only): drawn over the normal FX, never displacing them.
+        self._overlay: dict[EffectKey, RunningEffect] = {}
         self._dirty: set[str] = set()
         self._movement_errors: dict[tuple[str, bool], str] = {}
         self._notice: Optional[str] = None
         self._frame_time = local()
+        self._speed = 1.0
+        self._time_anchor = self._tempo.now()
+        self._beat_anchor = self._tempo.beats(self._time_anchor)
+        self._fx_time_anchor = self._time_anchor
+        self._fx_beat_anchor = self._beat_anchor
+
+    def _time_sample(self, now: Optional[float] = None) -> tuple[float, float]:
+        with self._lock:
+            now = self._tempo.now() if now is None else now
+            beats = self._tempo.beats(now)
+            return (
+                self._fx_time_anchor + (now - self._time_anchor) * self._speed,
+                self._fx_beat_anchor + (beats - self._beat_anchor) * self._speed,
+            )
+
+    def set_speed(self, speed: float) -> None:
+        if isinstance(speed, bool) or speed not in (0.25, 0.5, 1.0, 2.0, 4.0):
+            raise ValueError("FX speed must be 0.25, 0.5, 1, 2 or 4.")
+        with self._lock:
+            if self._speed == speed:
+                return
+            now = self._tempo.now()
+            self._fx_time_anchor, self._fx_beat_anchor = self._time_sample(now)
+            self._time_anchor = now
+            self._beat_anchor = self._tempo.beats(now)
+            self._speed = speed
+            for source in (self._live, self._preview or {}, self._overlay):
+                for effect in source.values():
+                    self._dirty.update(self._physical_fixture_id(item) for item in effect.fixtures)
 
     @property
     def tempo(self) -> TempoClock:
@@ -108,8 +144,7 @@ class EffectEngine:
         """
         previous = getattr(self._frame_time, "sample", None)
         if previous is None:
-            now = self._tempo.now()
-            self._frame_time.sample = (now, self._tempo.beats(now))
+            self._frame_time.sample = self._time_sample()
         try:
             yield
         finally:
@@ -117,17 +152,21 @@ class EffectEngine:
 
     def _now(self) -> float:
         sample = getattr(self._frame_time, "sample", None)
-        return self._tempo.now() if sample is None else sample[0]
+        return self._time_sample()[0] if sample is None else sample[0]
 
     def _beats(self, now: float) -> float:
         sample = getattr(self._frame_time, "sample", None)
-        return self._tempo.beats(now) if sample is None else sample[1]
+        if sample is not None:
+            return sample[1]
+        with self._lock:
+            real_time = self._time_anchor + (now - self._fx_time_anchor) / self._speed
+            return self._fx_beat_anchor + (self._tempo.beats(real_time) - self._beat_anchor) * self._speed
 
     def _editing(self) -> dict[EffectKey, RunningEffect]:
         return self._preview if self._preview is not None else self._live
 
-    def _changed(self, effect: Optional[RunningEffect]) -> None:
-        if effect is not None and self._preview is None:
+    def _changed(self, effect: Optional[RunningEffect], overlay: bool = False) -> None:
+        if effect is not None and (overlay or self._preview is None):
             self._dirty.update(self._physical_fixture_id(item) for item in effect.fixtures)
 
     @staticmethod
@@ -166,9 +205,9 @@ class EffectEngine:
                 component == "beam" and not _fits_kind(kind, fixture, component)
             ):
                 raise ValueError(f"Fixture '{participant_id}' cannot run {kind.value} on {component}.")
-        if definition.params.target_ids:
+        if definition.params.stops:
             if component == "ring":
-                raise ValueError("Target touring is only available for beam Move effects.")
+                raise ValueError("Target and zone routes are only available for beam Move effects.")
             self._validate_tour_targets(selected_fixtures, definition.params, rig or self._rig)
         return selected_fixtures
 
@@ -209,7 +248,6 @@ class EffectEngine:
         if rig is None:
             raise ValueError("Target touring requires the configured room rig.")
         document = rig.room_file()
-        zones = {zone.id: zone for zone in document.zones}
         patterned = params.pattern != "none" and params.size > 0
         for fixture_id in fixtures:
             setup = rig.head(fixture_id)
@@ -217,23 +255,11 @@ class EffectEngine:
             if motion is None:
                 raise ValueError(f"Fixture '{fixture_id}' has no configured movement range.")
             assignment = document.assignments.get(fixture_id)
-            included = [] if assignment is None else [
-                zones[zone_id] for zone_id in assignment.include_zones
-                if zone_id in zones and zone_id not in assignment.exclude_zones
-            ]
-            excluded = [] if assignment is None else [
-                zones[zone_id] for zone_id in assignment.exclude_zones if zone_id in zones
-            ]
             for target_id in params.target_ids:
                 target = rig.target(target_id)
                 if target.point is None:
                     raise ValueError(f"Target '{target_id}' has no measured coordinates.")
-                if patterned and (
-                    document.size is None
-                    or not included
-                    or not any(zone.contains(target.point, document.size) for zone in included)
-                    or any(zone.contains(target.point, document.size) for zone in excluded)
-                ):
+                if patterned and not target_in_included_areas(document, assignment, target.point):
                     raise ValueError(
                         f"Target '{target_id}' is outside fixture '{fixture_id}' included areas."
                     )
@@ -242,6 +268,21 @@ class EffectEngine:
                 except PositioningError as error:
                     raise ValueError(
                         f"Target '{target_id}' is unreachable for fixture '{fixture_id}': {error}"
+                    ) from error
+            for zone_id in params.zone_ids:
+                zone = document.zone(zone_id)
+                if (assignment is None or zone_id not in assignment.include_zones
+                        or zone_id in assignment.exclude_zones):
+                    raise ValueError(
+                        f"Zone '{zone.name}' is excluded for fixture '{fixture_id}'. Include it first."
+                    )
+                if document.size is None:
+                    raise ValueError("Zone routes need a measured room size.")
+                try:
+                    aim_at(setup, motion, zone.point_at(0.5, 0.5, document.size), 0.5)
+                except PositioningError as error:
+                    raise ValueError(
+                        f"Zone '{zone.name}' is unreachable for fixture '{fixture_id}': {error}"
                     ) from error
 
     # --- commands ---------------------------------------------------------------------------
@@ -255,8 +296,16 @@ class EffectEngine:
         *,
         definition: Optional[FxDefinition] = None,
         component: EffectComponent = "beam",
+        combo_id: str | None = None,
+        combo_name: str | None = None,
+        combo_slot: int | None = None,
+        combo_families: tuple[EffectType, ...] = (),
+        overlay: bool = False,
     ) -> None:
-        """Run an unchanged factory preset or a supplied stored definition."""
+        """Run an unchanged factory preset or a supplied stored definition.
+
+        `overlay` runs it in the accent layer: over the normal FX, replacing nothing there.
+        """
         if definition is None:
             if not 0 <= preset < PRESET_COUNT:
                 raise ValueError(f"Preset {preset + 1} does not exist (1-{PRESET_COUNT}).")
@@ -284,10 +333,12 @@ class EffectEngine:
             positions=positions,
             participant_count=participant_count,
             component=component,
+            combo_id=combo_id, combo_name=combo_name,
+            combo_slot=combo_slot, combo_families=combo_families,
         )
         new_key = (owner, family(effect_type), component)
         with self._lock:
-            effects = self._editing()
+            effects = self._overlay if overlay else self._editing()
             displaced: list[str] = []
             for key, active in list(effects.items()):
                 same_owner_page = key == new_key
@@ -299,14 +350,51 @@ class EffectEngine:
                 )
                 if same_owner_page or conflicts:
                     removed = effects.pop(key)
-                    self._changed(removed)
+                    self._changed(removed, overlay)
                     if conflicts and key != new_key:
                         displaced.append(f"{key[0]} ({', '.join(removed.fixtures)})")
-            self._notice = (
-                "Replaced conflicting FX instance(s): " + "; ".join(displaced)
-                if displaced else None
-            )
+            if not overlay:
+                self._notice = (
+                    "Replaced conflicting FX instance(s): " + "; ".join(displaced)
+                    if displaced else None
+                )
             effects[new_key] = current
+            self._changed(current, overlay)
+
+    def start_combo(
+        self, owner: str, row: int, name: str,
+        launches: list[tuple[FxDefinition, list[str]]], *,
+        component: EffectComponent = "beam", overlay: bool = False,
+    ) -> None:
+        # Validate the entire bundle before replacing anything; freeze launch time for seconds FX.
+        with self._lock, self.frame():
+            for definition, fixtures in launches:
+                self.validate_start(definition.kind, fixtures, definition, component=component)
+            self.stop_all(owner, component=component, overlay=overlay)
+            token = uuid4().hex
+            pages = tuple(family(definition.kind) for definition, _ in launches)
+            notices = []
+            for definition, fixtures in launches:
+                self.start(owner, family(definition.kind), row, fixtures, definition=definition,
+                           component=component, combo_id=token, combo_name=name,
+                           combo_slot=row, combo_families=pages, overlay=overlay)
+                if self._notice and not overlay:
+                    notices.append(self._notice)
+            if not overlay:
+                self._notice = "; ".join(notices) or None
+
+    def combo_effects(self, owner: str, *, component: EffectComponent = "beam") -> list[RunningEffect]:
+        with self._lock:
+            return [replace(effect, params=effect.params.model_copy(deep=True))
+                    for key, effect in self._editing().items()
+                    if key[0] == owner and effect.component == component and effect.combo_id is not None]
+
+    def stop_combo(self, owner: str, *, component: EffectComponent = "beam") -> None:
+        with self._lock:
+            effects = self._editing()
+            for key, effect in list(effects.items()):
+                if key[0] == owner and effect.component == component and effect.combo_id is not None:
+                    self._changed(effects.pop(key))
 
     def stop(
         self, owner: str, effect_type: EffectType, *, component: EffectComponent = "beam"
@@ -315,15 +403,16 @@ class EffectEngine:
             self._changed(self._editing().pop((owner, family(effect_type), component), None))
 
     def stop_all(
-        self, owner: Optional[str] = None, *, component: Optional[EffectComponent] = None
+        self, owner: Optional[str] = None, *, component: Optional[EffectComponent] = None,
+        overlay: bool = False,
     ) -> None:
         with self._lock:
-            effects = self._editing()
+            effects = self._overlay if overlay else self._editing()
             for key, effect in list(effects.items()):
                 if (owner is None or key[0] == owner) and (
                     component is None or effect.component == component
                 ):
-                    self._changed(effect)
+                    self._changed(effect, overlay)
                     del effects[key]
 
     def set_param(
@@ -338,7 +427,7 @@ class EffectEngine:
             effect = effects.get(key)
             if effect is None:
                 return False
-            if name == "speed" and effect.params.target_ids:
+            if name == "speed" and effect.params.touring:
                 travel = (
                     seconds_from_level(level)
                     if effect.params.timing == "seconds"
@@ -364,7 +453,7 @@ class EffectEngine:
             phase_anchor = effect.phase_anchor
             launched_at = effect.launched_at
             launch_beat = effect.launch_beat
-            if effect.params.target_ids and "travel" in update:
+            if effect.params.touring and "travel" in update:
                 elapsed = self._tour_elapsed(effect, now)
                 old_duration = effect.params.travel + effect.params.hold
                 segment = math.floor(elapsed / old_duration)
@@ -404,6 +493,48 @@ class EffectEngine:
                 **effect.params.model_dump(), "palette": palette, "colour_mode": "palette",
             })
             effects[key] = replace(effect, params=params)
+
+    def set_route(
+        self, owner: str, target_ids: list[str], zone_ids: list[str], *,
+        component: EffectComponent = "beam",
+    ) -> None:
+        """Replace the running Move FX route at runtime; its preset stays unchanged.
+
+        If the stop the heads are at (or travelling to) is still in the new route, the tour
+        continues from that stop's hold, so adding or removing other stops never jumps.
+        """
+        with self._lock:
+            effects = self._editing()
+            key = (owner, EffectType.CIRCLE, component)
+            effect = effects.get(key)
+            if effect is None or effect.kind not in MOVEMENT_TYPES or component != "beam":
+                raise ValueError("No Move FX is running on this strip. Launch one first.")
+            params = EffectParams.model_validate({
+                **effect.params.model_dump(), "target_ids": target_ids, "zone_ids": zone_ids,
+            })
+            if params.stops:
+                self._validate_tour_targets(effect.fixtures, params, self._rig)
+            now = self._now()
+            old = effect.params
+            current: Optional[str] = None
+            if old.stops:
+                duration = old.travel + old.hold
+                segment = 0 if old.single_point else math.floor(
+                    self._tour_elapsed(effect, now) / duration
+                )
+                current = old.stops[segment % len(old.stops)]
+            elapsed = 0.0
+            if current is not None and current in params.stops and params.touring:
+                elapsed = params.stops.index(current) * (params.travel + params.hold) + params.travel
+            launched_at, launch_beat = effect.launched_at, effect.launch_beat
+            if params.timing == "seconds":
+                launched_at = now - elapsed
+            else:
+                launch_beat = self._beats(now) - elapsed
+            effects[key] = replace(
+                effect, params=params, launched_at=launched_at, launch_beat=launch_beat,
+            )
+            self._changed(effect)
 
     def set_active(
         self, owner: str, active: bool, *, component: Optional[EffectComponent] = None
@@ -452,12 +583,12 @@ class EffectEngine:
             )
 
     def owner_running(
-        self, owner: str, *, component: Optional[EffectComponent] = None
+        self, owner: str, *, component: Optional[EffectComponent] = None, overlay: bool = False,
     ) -> bool:
         with self._lock:
             return any(
                 key[0] == owner and (component is None or effect.component == component)
-                for key, effect in self._editing().items()
+                for key, effect in (self._overlay if overlay else self._editing()).items()
             )
 
     def all_running(
@@ -510,10 +641,12 @@ class EffectEngine:
 
     def movement_active(self, fixture_id: str, *, preview: bool = False) -> bool:
         with self._lock:
-            effects = self._editing() if preview else self._live
+            effects = list((self._editing() if preview else self._live).values())
+            if not preview:
+                effects += self._overlay.values()
             return any(
                 effect.kind in MOVEMENT_TYPES and effect.active and fixture_id in effect.fixtures
-                for effect in effects.values()
+                for effect in effects
             )
 
     def stop_movement_for(self, fixture_ids: set[str]) -> None:
@@ -545,7 +678,7 @@ class EffectEngine:
         with self._lock:
             ids = set(self._dirty)
             self._dirty.clear()
-            for effect in self._live.values():
+            for effect in [*self._live.values(), *self._overlay.values()]:
                 if effect.active:
                     ids.update(self._physical_fixture_id(item) for item in effect.fixtures)
             return ids
@@ -558,17 +691,19 @@ class EffectEngine:
 
     def render(
         self, fixture_id: str, state: Values, *, preview: bool = False,
-        rig: Optional[RigStore] = None,
+        rig: Optional[RigStore] = None, overlay: bool = False,
     ) -> EffectFrame:
+        """Apply the normal FX, or with `overlay` only the accent FX (live output only)."""
         with self._lock:
+            source = self._overlay if overlay else (self._editing() if preview else self._live)
             effects = [
                 (effect.kind, effect)
-                for effect in (self._editing() if preview else self._live).values()
+                for effect in source.values()
                 if effect.active and effect.component == "beam" and fixture_id in effect.fixtures
             ]
             ring_effects = [
                 (effect.kind, effect)
-                for effect in (self._editing() if preview else self._live).values()
+                for effect in source.values()
                 if effect.active and effect.component == "ring"
             ]
         if not effects and not ring_effects:
@@ -587,8 +722,8 @@ class EffectEngine:
                 index = effect.positions[slot_index] if effect.positions else slot_index
                 count = effect.participant_count or len(effect.fixtures)
                 phase = self._phase(effect, now, beats, index, count)
-                if kind in MOVEMENT_TYPES and effect.params.target_ids:
-                    tour = self._target_tour(
+                if kind in MOVEMENT_TYPES and effect.params.stops:
+                    tour = self._route(
                         fixture_id, state, kind, effect, now, index, count, selected_rig, preview
                     )
                     if tour is None:
@@ -667,87 +802,116 @@ class EffectEngine:
             return max(0.0, self._beats(now) - effect.launch_beat)
         return max(0.0, now - effect.launched_at)
 
-    def _target_tour(
+    def _route(
         self, fixture_id: str, state: Values, kind: EffectType, effect: RunningEffect,
         now: float, index: int, count: int, rig: Optional[RigStore], preview: bool,
     ) -> Optional[tuple[Values, bool, bool]]:
+        """Render a single anchored point or a target/zone tour as (state, dark, static)."""
         if rig is None or "pan" not in state or "tilt" not in state:
-            self._movement_error(fixture_id, preview, "Target tour has no configured room rig.")
+            self._movement_error(fixture_id, preview, "Target or zone route has no configured room rig.")
             return None
         params = effect.params
         try:
-            elapsed = self._tour_elapsed(effect, now)
-            duration = params.travel + params.hold
-            tour_duration = duration * len(params.target_ids)
-            spread_offset = params.spread * index / count * tour_duration if count else 0.0
-            alternate_offset = (
-                0.5 * tour_duration * (index % 2)
-                if params.selection == "alternating" else 0.0
-            )
-            elapsed = max(0.0, elapsed) + spread_offset + alternate_offset
-            segment_duration = duration
-            segment = math.floor(elapsed / segment_duration)
-            phase = (elapsed / segment_duration) % 1.0
-            within = elapsed - segment * segment_duration
-            target_index = segment % len(params.target_ids)
-            previous_index = (target_index - 1) % len(params.target_ids)
             document = rig.room_file(live=not preview)
-            targets = {target.id: target for target in document.targets}
-            target = targets[params.target_ids[target_index]]
-            previous = targets[params.target_ids[previous_index]]
-            if target.point is None or previous.point is None:
-                raise PositioningError("A tour target has no measured coordinates.")
             setup = rig.head(fixture_id)
             motion = self._patch.get(fixture_id).definition.motion
             if motion is None:
                 raise PositioningError("The fixture has no movement range.")
-            current_aim = aim_at(setup, motion, target.point, state["pan"])
-            if within + 1e-9 < params.travel:
-                if segment == 0:
-                    start_pan, start_tilt = state["pan"], state["tilt"]
-                else:
-                    start_aim = aim_at(setup, motion, previous.point, state["pan"])
-                    start_pan, start_tilt = start_aim.pan, start_aim.tilt
-                fraction = within / params.travel
-                fraction = fraction * fraction * (3.0 - 2.0 * fraction)
-                out = dict(state)
-                out.update(
-                    pan=start_pan + (current_aim.pan - start_pan) * fraction,
-                    tilt=start_tilt + (current_aim.tilt - start_tilt) * fraction,
-                )
-                if "speed" in out:
-                    out["speed"] = 1.0
-                self._movement_errors.pop((fixture_id, preview), None)
-                return out, True, False
-
-            out = dict(state)
+            targets = {target.id: target for target in document.targets}
             pattern_kind = kind if params.pattern == "current" else (
                 EffectType.CIRCLE if params.pattern == "circle" else
                 EffectType.FIGURE8 if params.pattern == "figure8" else None
             )
             size = params.size if pattern_kind is not None else 0.0
-            if pattern_kind is not None and size > 0.0:
-                local_phase = (max(0.0, within - params.travel) / params.hold) % 1.0
-                dx, dy = movement_offset(pattern_kind, local_phase)
+
+            def offset(phase: float) -> tuple[float, float]:
+                if pattern_kind is None or size == 0.0:
+                    return 0.0, 0.0
+                dx, dy = movement_offset(pattern_kind, phase)
                 if params.mirror in ("x", "xy"):
                     dx = -dx
                 if params.mirror in ("y", "xy"):
                     dy = -dy
                 if params.mirror != "none" and params.mirror_alternate and index % 2:
                     dx = -dx
-                pan = current_aim.pan + size * 30.0 * dx / motion.pan_degrees
-                tilt = current_aim.tilt + size * 30.0 * dy / motion.tilt_degrees
-                out["pan"] = setup.limits.clamp_pan(pan)
-                out["tilt"] = setup.limits.clamp_tilt(tilt)
-            else:
-                out["pan"], out["tilt"] = current_aim.pan, current_aim.tilt
+                return dx, dy
+
+            def centre(stop: str, reference: float):
+                if params.target_ids:
+                    point = targets[stop].point
+                    if point is None:
+                        raise PositioningError("A route target has no measured coordinates.")
+                else:
+                    if document.size is None:
+                        raise PositioningError("Zone routes need a measured room size.")
+                    point = document.zone(stop).point_at(0.5, 0.5, document.size)
+                return aim_at(setup, motion, point, reference)
+
+            def aim(stop: str, phase: float, reference: float) -> tuple[float, float]:
+                dx, dy = offset(phase)
+                if params.zone_ids:
+                    assert document.size is not None
+                    point = document.zone(stop).point_at(
+                        0.5 + 0.5 * size * dx, 0.5 + 0.5 * size * dy, document.size
+                    )
+                    result = aim_at(setup, motion, point, reference)
+                    return result.pan, result.tilt
+                base = centre(stop, reference)
+                return (
+                    setup.limits.clamp_pan(base.pan + size * 30.0 * dx / motion.pan_degrees),
+                    setup.limits.clamp_tilt(base.tilt + size * 30.0 * dy / motion.tilt_degrees),
+                )
+
+            out = dict(state)
             if "speed" in out:
                 out["speed"] = 1.0
-            is_static = size == 0.0 and (
-                params.pattern == "none" or params.size == 0.0
+            static = bool(params.target_ids) and size == 0.0
+            if params.single_point:
+                out["pan"], out["tilt"] = aim(
+                    params.stops[0], self._phase(effect, now, None, index, count), state["pan"]
+                )
+                self._movement_errors.pop((fixture_id, preview), None)
+                return out, False, static
+
+            stops = params.stops
+            elapsed = self._tour_elapsed(effect, now)
+            duration = params.travel + params.hold
+            tour_duration = duration * len(stops)
+            spread_offset = params.spread * index / count * tour_duration if count else 0.0
+            alternate_offset = (
+                0.5 * tour_duration * (index % 2)
+                if params.selection == "alternating" else 0.0
             )
+            elapsed = max(0.0, elapsed) + spread_offset + alternate_offset
+            segment = math.floor(elapsed / duration)
+            within = elapsed - segment * duration
+            stop = stops[segment % len(stops)]
+            previous = stops[(segment - 1) % len(stops)]
+            if within + 1e-9 < params.travel:
+                if params.target_ids:
+                    end = centre(stop, state["pan"])
+                    end_pan, end_tilt = end.pan, end.tilt
+                else:
+                    end_pan, end_tilt = aim(stop, 0.0, state["pan"])
+                if segment == 0:
+                    start_pan, start_tilt = state["pan"], state["tilt"]
+                elif params.target_ids:
+                    start = centre(previous, state["pan"])
+                    start_pan, start_tilt = start.pan, start.tilt
+                else:
+                    start_pan, start_tilt = aim(previous, 1.0, state["pan"])
+                fraction = within / params.travel
+                fraction = fraction * fraction * (3.0 - 2.0 * fraction)
+                out.update(
+                    pan=start_pan + (end_pan - start_pan) * fraction,
+                    tilt=start_tilt + (end_tilt - start_tilt) * fraction,
+                )
+                self._movement_errors.pop((fixture_id, preview), None)
+                return out, True, False
+            local_phase = (max(0.0, within - params.travel) / params.hold) % 1.0
+            out["pan"], out["tilt"] = aim(stop, local_phase, state["pan"])
             self._movement_errors.pop((fixture_id, preview), None)
-            return out, False, is_static
+            return out, False, static
         except (KeyError, PositioningError) as error:
             self._movement_error(fixture_id, preview, str(error))
             return None
@@ -758,6 +922,8 @@ class EffectEngine:
         """True only at an exact, permitted-by-runtime stationary target hold endpoint."""
         with self._lock:
             effects = list((self._editing() if preview else self._live).values())
+            if not preview:
+                effects += self._overlay.values()
         now = self._now()
         for effect in effects:
             if (
@@ -768,7 +934,7 @@ class EffectEngine:
             base = dict(values)
             # Render already carries the target coordinates; only grant an exception when
             # this exact frame is marked static and the final values still equal that aim.
-            frame = self._target_tour(
+            frame = self._route(
                 fixture_id, base, effect.kind, effect, now,
                 effect.positions[effect.fixtures.index(fixture_id)] if effect.positions
                 else effect.fixtures.index(fixture_id),

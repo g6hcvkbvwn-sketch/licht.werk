@@ -55,7 +55,7 @@ export default function SequenceLiveControls({ scopes, value, onChange }: {
   const families = editorFamilies(scopes);
   return <fieldset className="editor-live-controls">
     <legend>Live controls for this sequence</legend>
-    <p>Choose what you want to adjust while the sequence runs. These fields keep their current values at launch and are not overwritten by its scenes. No initial value needs to be defined.</p>
+    <p>Choose what you want to adjust while the sequence runs. These fields keep their current values at launch and are not overwritten by its looks. No initial value needs to be defined.</p>
     <p className="muted">Group choices apply to all its members. Individual head choices let you control just one head. These are stored with this sequence, not as global show settings.</p>
     {scopes.map((scope) => <div className="editor-live-scope" key={scope.key}>
       <strong>{scope.name}{scope.group ? " · group" : ""}</strong>

@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Optional
 
 from .fixtures import INTENSITY_ATTRIBUTES, STROBE_ATTRIBUTES, render_mode
 from .patch import Patch, ResolvedFixture
+from .live_modifiers import Tint
 from .rings import expand_legacy_ring_values
 from .service import LightingService
 from .transitions import MAX_FADE_SECONDS, Fade
@@ -94,7 +95,10 @@ class FixtureController:
         self._preview_static_aims: Optional[dict[str, tuple[float, float]]] = None
         # Held buttons: owner -> fixture id -> attribute values forced at render time.
         self._holds: dict[str, dict[str, Values]] = {}
+        # Named-target aims held by an accent: same beam-guard exception as a recalled aim.
+        self._held_aims: dict[str, dict[str, tuple[float, float]]] = {}
         self._effects: Optional["EffectEngine"] = None
+        self._tint: Optional[Tint] = None
         self._position_listener: Optional[Callable[[list[str]], None]] = None
         self._render(patch.fixtures)
 
@@ -106,6 +110,14 @@ class FixtureController:
 
     def add_tick_listener(self, callback: Callable[[], None]) -> None:
         self._tick_listeners.append(callback)
+
+    def set_tint(self, tint: Optional[Tint]) -> None:
+        with self._lock:
+            self._tint = tint
+            self._render(self._patch.fixtures)
+
+    def _tinted_state(self, fixture_id: str, values: Values) -> Values:
+        return self._tint.apply(self._patch.get(fixture_id), values) if self._tint is not None else values
 
     @contextmanager
     def editing_context(self, preview: bool):
@@ -264,13 +276,18 @@ class FixtureController:
                     for name in ("intensity", "strobe"):
                         if name in state:
                             state[name] = 0.0
-            return self._protected_state(fixture_id, state, preview=True)
+            return self._protected_state(fixture_id, self._tinted_state(fixture_id, state), preview=True)
 
     def static_target_active(self, fixture_id: str, values: Values, *, preview: bool = False) -> bool:
         if self._guard is None or not self._guard.status(fixture_id).active:
             return False
         if self._effects is not None and self._effects.stationary_target(fixture_id, values, preview=preview):
             return True
+        if not preview and "pan" in values and "tilt" in values:
+            for aims in self._held_aims.values():
+                held = aims.get(fixture_id)
+                if held is not None and abs(values["pan"] - held[0]) <= 1e-10 and abs(values["tilt"] - held[1]) <= 1e-10:
+                    return True
         aims = self._preview_static_aims if preview and self._preview_static_aims is not None else self._static_aims
         endpoint = aims.get(fixture_id)
         moving = self._effects is not None and self._effects.movement_active(fixture_id, preview=preview)
@@ -351,15 +368,26 @@ class FixtureController:
 
     # --- holds (flash, strobe-hold) ---------------------------------------------------------
 
-    def hold(self, owner: str, values: dict[str, Values]) -> None:
-        """Force attribute values on the live output while a button is held."""
+    def hold(
+        self, owner: str, values: dict[str, Values],
+        static_aims: Optional[dict[str, tuple[float, float]]] = None,
+    ) -> None:
+        """Force attribute values on the live output while a button is held.
+
+        `static_aims` (pan, tilt per head) mark held positions that aim at a named target.
+        """
         with self._lock:
             self._holds[owner] = {fixture_id: dict(v) for fixture_id, v in values.items()}
+            if static_aims:
+                self._held_aims[owner] = dict(static_aims)
+            else:
+                self._held_aims.pop(owner, None)
             self._render(self._patch.get(fixture_id) for fixture_id in values)
 
     def release(self, owner: str) -> None:
         with self._lock:
             released = self._holds.pop(owner, None)
+            self._held_aims.pop(owner, None)
             if released:
                 self._render(self._patch.get(fixture_id) for fixture_id in released)
 
@@ -374,12 +402,18 @@ class FixtureController:
             frame = self._effects.render(fixture_id, state, rig=self._rig)
             state, dark_movement = frame.values, frame.dark_movement
         for held in self._holds.values():
-            state.update(held.get(fixture_id, {}))
+            values = held.get(fixture_id, {})
+            if "pan" in values or "tilt" in values:
+                dark_movement = False  # a held position replaces the FX movement below it
+            state.update(values)
+        if self._effects is not None and self._holds:
+            frame = self._effects.render(fixture_id, state, rig=self._rig, overlay=True)
+            state, dark_movement = frame.values, dark_movement or frame.dark_movement
         if dark_movement:
             for name in ("intensity", "strobe"):
                 if name in state:
                     state[name] = 0.0
-        return state
+        return self._tinted_state(fixture_id, state)
 
     def master(self) -> float:
         with self._lock:

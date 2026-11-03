@@ -41,7 +41,7 @@ ALL_FLOOR = Zone(
 
 def permit_floor(rig):
     rig.save_zone(ALL_FLOOR)
-    rig.set_assignments({HEAD: HeadAssignment(include_zones=["all-floor"], exclude_zones=["booth"])})
+    rig.set_assignments({HEAD: HeadAssignment(include_zones=["all-floor", INCLUDE.id], exclude_zones=["booth"])})
 
 
 def make_patch():
@@ -241,7 +241,7 @@ def test_group_assignment_sets_every_head_and_reports_unmeasured_ones(client, tm
     assert body["notes"] == ["Head 2: not measured/calibrated yet, saved but not moved."]
     assert body["heads"][1]["guard_reason"] == "head position not measured"
     saved = json.loads((tmp_path / "room.json").read_text())["assignments"]
-    assert saved[HEAD2] == {"aim_target": "clear", "aim_zone": None, "include_zones": [], "exclude_zones": ["booth"]}
+    assert saved[HEAD2] == {"aim_target": "clear", "aim_zone": None, "include_zones": [], "exclude_zones": ["booth", INCLUDE.id]}
 
 
 def test_named_target_is_a_static_exception_even_inside_an_exclusion(client) -> None:
@@ -256,7 +256,7 @@ def test_named_target_is_a_static_exception_even_inside_an_exclusion(client) -> 
 
 def test_beam_blocked_status_is_reported(client) -> None:
     client.post(f"/api/fixtures/{HEAD}/state", json={"values": {"pan": 0.0, "tilt": 0.6}})
-    assert head(client)["beam_blocked_by"] is None  # no exclude zone assigned yet
+    assert head(client)["beam_blocked_by"] == "Booth"  # zones start excluded
 
     client.put(f"/api/positions/{HEAD}/assignment", json={"exclude_zones": ["booth"]})
 
@@ -289,7 +289,7 @@ def test_zone_crud_and_delete_removes_assignments(client) -> None:
     assert client.delete("/api/zones/booth").status_code == 404
     room = client.get("/api/room").json()
     assert [z["id"] for z in room["zones"]] == ["floor-area", "far"]
-    assert room["assignments"][HEAD] == {"aim_target": None, "aim_zone": "floor-area", "include_zones": ["floor-area"], "exclude_zones": []}
+    assert room["assignments"][HEAD] == {"aim_target": None, "aim_zone": "floor-area", "include_zones": ["floor-area"], "exclude_zones": ["far"]}
 
     # Legacy mode is not a global permission toggle: existing strip settings stay intact.
     response = client.put("/api/zones/floor-area", json={**INCLUDE.model_dump(), "mode": "exclude"})

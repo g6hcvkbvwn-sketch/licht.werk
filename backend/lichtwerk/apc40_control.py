@@ -28,10 +28,12 @@ import math
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from threading import RLock
+from threading import Lock, RLock
 from typing import Literal, Optional
 
 from . import apc40 as hw
+from .accents import AccentPlayer
+from .quantize import Quantizer
 from .apc40_pads import PadStore
 from .colour import ColourControl, has_rgb
 from .effect_engine import EffectEngine, RunningEffect
@@ -45,7 +47,9 @@ from .effects import (
     knob_params,
     speed_level,
     family_presets,
+    family,
     FxDefinition,
+    ComboDefinition,
 )
 from .fx_service import FxService
 from .fixture_service import FixtureController, FixtureDisabledError
@@ -66,6 +70,7 @@ logger = logging.getLogger(__name__)
 # After (re)connect the APC40 reports where its faders are. Those reports only update the
 # remembered positions, so lights do not jump just because the controller was plugged in.
 CONNECT_QUIET_SECONDS = 1.0
+PICKUP_TOLERANCE = 2 / 127  # a detached fader this close to the level counts as caught
 
 STROBE_MIN_HZ = 1.0
 STROBE_MAX_HZ = 20.0
@@ -73,6 +78,7 @@ STROBE_DEFAULT_HZ = 10.0
 STROBE_STEP_HZ = 0.5  # per CUE LEVEL detent
 
 BLINK_SECONDS = 0.5  # app-side blinking of the active scene's pad
+QUEUED_BLINK_SECONDS = 0.1  # fast blink of a pad or NEXT that waits for the beat (quantize)
 TEMPO_STEP_BPM = 0.1  # per TEMPO knob detent
 RING_PALETTE = tuple(
     (name.title(), velocity)
@@ -142,7 +148,7 @@ def effect_owner(track: int) -> str:
 def param_level(effect: RunningEffect, name: str) -> float:
     """Knob position (0-1) of an effect parameter."""
     if name == "speed":
-        if effect.params.target_ids:
+        if effect.params.touring:
             return (min(1.0, max(0.0, math.log(120 / effect.params.travel) / math.log(120 / 0.25)))
                     if effect.params.timing == "seconds" else speed_level(effect.params.travel))
         if effect.params.timing == "seconds":
@@ -167,7 +173,7 @@ def effect_knobs(page: EffectType, running: Optional[RunningEffect]) -> dict[int
                 knobs.pop(6, None)
             if running.params.maximum == 0:
                 knobs.pop(2, None)
-        if running.params.target_ids and running.params.pattern == "none":
+        if running.params.touring and running.params.pattern == "none":
             knobs.pop(2, None)
     return knobs
 
@@ -220,12 +226,20 @@ class Apc40Control:
         self._clock = clock
         self._strips = {s.track: s for s in strips}
         self._colour = ColourControl(controller)
+        self.accents = AccentPlayer(
+            controller, scenes, positions, effects,
+            effects.tempo.beats if effects is not None else None,
+        )
+        controller.add_tick_listener(self.accents.tick)
+        self.quantizer = Quantizer(effects.tempo.beats if effects is not None else None)
+        controller.add_tick_listener(self._fire_queued)
         self._lock = RLock()
         self._modes = {"heads": "group", "spots": "group"}
         self._selected: Optional[int] = None
         self._fx_palette = False
         self._fx_open = False  # effects page shown on the pads (SCENE LAUNCH)
         self._fx_type = EffectType.CHASE
+        self._fx_combo = False
         self._fx_track: Optional[int] = None  # strip the device knobs edit on the effects page
         self._ring_tracks: set[int] = set()
         self._ring_sections: dict[int, int] = {}  # 0 = all sections
@@ -239,6 +253,7 @@ class Apc40Control:
         self._show_dialog_kind: Optional[str] = None
         self._show_dialog_item: Optional[str] = None
         self._show_dialog_pad = 0
+        self._show_dialog_capture = False  # open the scene editor with Capture live ticked
         self._fx_dialog_id = 0
         self._fx_dialog: Optional[tuple[int, str, int, str]] = None
         self._shift = False
@@ -249,6 +264,8 @@ class Apc40Control:
         self._strobe_hz = STROBE_DEFAULT_HZ
         self._quiet_until = float("-inf")
         self._last_event: Optional[MidiEvent] = None
+        self._pickup: set[int] = set()  # tracks whose fader waits to catch the current level
+        self._pickup_lock = Lock()
         for strip in strips:
             if strip.target is not None and not target_fixtures(controller.patch, strip.target):
                 logger.warning(
@@ -274,6 +291,55 @@ class Apc40Control:
     @property
     def strips(self) -> list[Strip]:
         return [self._strips[t] for t in sorted(self._strips)]
+
+    @property
+    def lock(self) -> RLock:
+        return self._lock
+
+    def set_family_mode(self, family_name: str, mode: str) -> None:
+        """Switch a strip family to group or single mode, as its ACTIVATOR does."""
+        with self._lock:
+            for strip in self._strips.values():
+                if strip.family == family_name and strip.group == (mode == "group"):
+                    self._switch_mode(strip.track)
+                    return
+
+    # --- soft takeover ------------------------------------------------------------------------
+
+    def scene_applied(self, changes: dict[str, dict[str, float]]) -> None:
+        """A scene, look or sequence step set levels: detach the faders of those strips.
+
+        Uses only the pickup lock, because sequences call this while holding their own lock.
+        """
+        tracks = {
+            track for track in self._strips
+            if any(("pump" if track == 8 else "intensity") in changes.get(f.patch.id, {})
+                   for f in self.fixtures(track))
+        }
+        with self._pickup_lock:
+            self._pickup.update(tracks)
+
+    def pickup(self, track: int) -> bool:
+        """The physical fader is detached until it passes the strip's current level."""
+        with self._pickup_lock:
+            return track in self._pickup
+
+    def _fader_caught(self, track: int, value: float, virtual: bool) -> bool:
+        with self._pickup_lock:
+            if track not in self._pickup:
+                return True
+        previous = self._settings[track].intensity
+        level = self.level(track, "pump" if track == 8 else "intensity")
+        caught = (
+            virtual  # the on-screen fader is a deliberate absolute move
+            or level is None
+            or abs(value - level) <= PICKUP_TOLERANCE
+            or (previous is not None and (previous - level) * (value - level) < 0)
+        )
+        if caught:
+            with self._pickup_lock:
+                self._pickup.discard(track)
+        return caught
 
     @property
     def pads(self) -> PadStore:
@@ -312,11 +378,13 @@ class Apc40Control:
     def show_page(self) -> str:
         return self._show_page
 
-    def show_dialog_request(self) -> tuple[int, Optional[str], Optional[str], int]:
-        return self._show_dialog_id, self._show_dialog_kind, self._show_dialog_item, self._show_dialog_pad
+    def show_dialog_request(self) -> tuple[int, Optional[str], Optional[str], int, bool]:
+        return (self._show_dialog_id, self._show_dialog_kind, self._show_dialog_item,
+                self._show_dialog_pad, self._show_dialog_capture)
 
-    def _request_show_dialog(self, kind: str, pad: int, item: Optional[str] = None) -> None:
+    def _request_show_dialog(self, kind: str, pad: int, item: Optional[str] = None, *, capture_live: bool = False) -> None:
         self._show_dialog_id += 1
+        self._show_dialog_capture = capture_live
         self._show_dialog_kind = kind
         self._show_dialog_item = item
         self._show_dialog_pad = pad
@@ -330,11 +398,35 @@ class Apc40Control:
     def last_error(self) -> Optional[str]:
         return self._error
 
+    def queued_pads(self) -> set[int]:
+        return self.quantizer.queued_pads()
+
     def beat_phase(self) -> Optional[float]:
         return self._effects.tempo.beats() % 1.0 if self._effects is not None else None
 
     def position_assignment(self, track: int) -> HeadAssignment:
         return self._positions.strip_assignment(effect_owner(track))
+
+    def include_zone(self, track: int, zone_id: str) -> None:
+        """Permission-only quick include from the Move editor; never recalls an aim."""
+        with self._lock:
+            strip = self._strips.get(track)
+            if not strip or strip.target is None:
+                raise ValueError("Choose a patched fixture/group strip.")
+            self._positions.rig.room_file().zone(zone_id)
+            current = self.position_assignment(track)
+            if zone_id in current.include_zones and zone_id not in current.exclude_zones:
+                return
+            notes = self._positions.set_strip_assignment(
+                effect_owner(track), strip.target,
+                current.model_copy(update={
+                    "include_zones": list(dict.fromkeys([*current.include_zones, zone_id])),
+                    "exclude_zones": [zone for zone in current.exclude_zones if zone != zone_id],
+                }),
+                0.0, recall=False,
+            )
+            if notes:
+                raise ValueError("; ".join(notes))
 
     def selected(self) -> Optional[int]:
         with self._lock:
@@ -379,6 +471,43 @@ class Apc40Control:
     def fx_type(self) -> EffectType:
         with self._lock:
             return self._fx_type
+
+    def combo_open(self) -> bool:
+        return self._fx_open and self._fx_combo
+
+    def combo_effects(self, track: int) -> list[RunningEffect]:
+        return self._effects.combo_effects(effect_owner(track), component=self.fx_component(track)) if self._effects else []
+
+    def combo_definition(self, track: int, row: int) -> ComboDefinition:
+        strip = self._strips.get(track)
+        if not strip or strip.target is None or self.fx_service is None:
+            raise ValueError("Combo FX requires a patched strip and the FX service.")
+        return self.fx_service.store.get_combo(strip.target, row, component=self.fx_component(track))
+
+    def start_combo(self, track: int, row: int, definition: ComboDefinition | None = None, *,
+                    component: Literal["beam", "ring"] | None = None) -> None:
+        with self._lock:
+            strip = self._strips.get(track)
+            if not strip or strip.target is None or not self.is_active(track) or self.fx_service is None:
+                raise ValueError("Choose an active patched strip before launching Combo FX.")
+            component = component or self.fx_component(track)
+            self.fx_service.start_combo(effect_owner(track), strip.target, row, definition, component=component)
+            self._fx_track = track
+            effects = self._effects.combo_effects(effect_owner(track), component=component)
+            if effects:
+                self._fx_type = family(effects[0].kind)
+
+    def select_combo_family(self, track: int, page: EffectType) -> None:
+        with self._lock:
+            if page not in EFFECT_TYPES or not self.effect_fixtures(track, page):
+                raise ValueError("Choose Dimmer, Colour or Move for the device knobs.")
+            if not self.combo_open() or self._fx_track != track:
+                raise ValueError("Select this strip on the Combo page before changing its knob family.")
+            self._fx_type = page
+
+    def selected_colour_pad(self) -> int | None:
+        with self._lock:
+            return self._settings[self._selected].colour_pad if self._selected is not None else None
 
     @property
     def effects(self) -> Optional[EffectEngine]:
@@ -462,7 +591,7 @@ class Apc40Control:
                 running = self.running_effect(track, self._fx_type) if track is not None else None
                 return {
                     knob: (
-                        name, ("Travel" if name == "speed" and running and running.params.target_ids
+                        name, ("Travel" if name == "speed" and running and running.params.touring
                                else "Rate" if name == "speed" else "Depth"
                                if name == "size" and self._fx_type is EffectType.CHASE else PARAM_LABELS[name]),
                         param_level(running, name) if running else None,
@@ -596,6 +725,8 @@ class Apc40Control:
         with self._lock:
             self._quiet_until = self._clock() + CONNECT_QUIET_SECONDS
             self._shift = False
+        # A pad release may have been lost with the connection: end while-held accents.
+        self.accents.release_held()
 
     def handle(self, event: MidiEvent, virtual: bool = False) -> None:
         """Process one event. Expected problems are logged; they never stop the lighting engine."""
@@ -607,7 +738,7 @@ class Apc40Control:
                 self._error = None
             try:
                 if event.kind == "cc":
-                    self._cc(event, quiet)
+                    self._cc(event, quiet, virtual)
                 elif event.value > 0:
                     self._press(event)
                 else:
@@ -619,11 +750,12 @@ class Apc40Control:
                     event.kind, event.number, event.channel, error,
                 )
 
-    def _cc(self, event: MidiEvent, quiet: bool) -> None:
+    def _cc(self, event: MidiEvent, quiet: bool, virtual: bool = False) -> None:
         number, value = event.number, event.value
         if number == hw.CC_TRACK_FADER and 1 <= event.channel <= hw.TRACKS:
+            caught = quiet or self._fader_caught(event.channel, value / 127.0, virtual)
             self._settings[event.channel].intensity = value / 127.0
-            if not quiet and self.is_active(event.channel):
+            if caught and not quiet and self.is_active(event.channel):
                 self._apply_fader(event.channel)
         elif number == hw.CC_MASTER_FADER:
             self._master_fader = value / 127.0
@@ -696,15 +828,34 @@ class Apc40Control:
                 if self._fx_palette:
                     self._fx_track = track
                     self._fx_type = EffectType.RAINBOW
+                    self._fx_combo = False
         elif number == hw.NOTE_TRACK_SELECT:
             if self._shift:
                 self._open_positions(track)
             else:
                 self._select_fx_track(track)
+        elif number == hw.NOTE_SCENE_LAUNCH_FIRST + hw.NEXT_SCENE_LAUNCH_INDEX:
+            if self._scenes.sequences is None:
+                raise ValueError("Sequences are not available.")
+            sequences = self._scenes.sequences
+            status = sequences.status()
+            if status is None or status["status"] not in ("running", "paused"):
+                raise ValueError("NEXT: no sequence is running.")
+            self._quantized("next", "NEXT", lambda held: sequences.next())
         elif hw.NOTE_SCENE_LAUNCH_FIRST <= number < hw.NOTE_SCENE_LAUNCH_FIRST + hw.SCENE_LAUNCH_COUNT:
             index = number - hw.NOTE_SCENE_LAUNCH_FIRST
             if index < len(EFFECT_TYPES):
                 self._open_effects(EFFECT_TYPES[index])
+            elif index == 3 and self.fx_service is not None:
+                if self.combo_open():
+                    self._fx_open = False
+                else:
+                    self._fx_combo = True
+                    self._fx_open = True
+                    self._selected = None
+                    self._position_track = None
+        elif number == hw.NOTE_METRONOME:
+            self.quantizer.set_enabled(not self.quantizer.enabled())
         elif number == hw.NOTE_TAP_TEMPO:
             if self._effects is not None:
                 self._effects.tempo.tap()
@@ -725,6 +876,10 @@ class Apc40Control:
             self._shift = False
         elif event.number == hw.NOTE_RECORD_ARM:
             self._flash(event.channel, pressed=False)
+        else:
+            pad = hw.note_pad(event.number)
+            if pad is not None and not self.quantizer.release(f"accent:{pad}"):
+                self.accents.release(pad)
 
     # --- actions ----------------------------------------------------------------------------
 
@@ -755,12 +910,17 @@ class Apc40Control:
             self._selected = None
         if self._position_track is not None and not self.is_active(self._position_track):
             self._position_track = None
+        # Suspend outgoing owners before resuming incoming ones, so overlap does not delete standby FX.
+        if self._effects is not None:
+            for other in self._strips.values():
+                if other.family == strip.family and not self.is_active(other.track):
+                    self._effects.set_active(effect_owner(other.track), False)
         for other in self._strips.values():
             if other.family != strip.family:
                 continue
-            if self._effects is not None:
-                self._effects.set_active(effect_owner(other.track), self.is_active(other.track))
             if self.is_active(other.track):
+                if self._effects is not None:
+                    self._effects.set_active(effect_owner(other.track), True)
                 self._apply_settings(other.track)
         if strip.family == "heads":
             self._activate_position_strips()
@@ -771,7 +931,8 @@ class Apc40Control:
         fixtures = self.fixtures(track)
         if not fixtures:
             return
-        self._apply_fader(track)
+        if not self.pickup(track):
+            self._apply_fader(track)
         rgb = [f for f in fixtures if has_rgb(f)]
         if rgb and settings.white_pad:
             self._controller.apply(white_pad_changes(rgb), fade_seconds=0.0)
@@ -915,16 +1076,55 @@ class Apc40Control:
             sequences = self._scenes.sequences
             if sequences is None:
                 raise ValueError("Sequences are not available.")
-            sequences.launch_pad(assignment.sequence)
+            sequence_id = assignment.sequence
+            self._quantized("sequence", f"Sequence {self._name(sequences.store, sequence_id)}",
+                            lambda held: sequences.launch_pad(sequence_id), pad)
             return
         assignment = self._pads.get(pad)
         if assignment is None:
-            self._request_show_dialog("scene", pad)
+            # SHIFT + empty pad: store the live look (values and running FX).
+            self._request_show_dialog("scene", pad, capture_live=self._shift)
             return
         if self._shift:
             self._request_show_dialog("scene", pad, assignment.scene)
             return
-        self._scenes.recall(assignment.scene)
+        scene_id, name = assignment.scene, self._name(self._scenes.store, assignment.scene)
+        if assignment.accent != "off":
+            beats = assignment.accent_beats if assignment.accent == "beats" else None
+            # A while-held accent let go before its beat still plays, for one beat.
+            self._quantized(f"accent:{pad}", f"Accent {name}",
+                            lambda held: self.accents.start(pad, scene_id, beats if beats or held else 1), pad)
+            return
+        self._quantized("look", f"Look {name}", lambda held: self._scenes.recall(scene_id), pad)
+
+    @staticmethod
+    def _name(store, item_id: str) -> str:
+        try:
+            return store.get(item_id).name
+        except KeyError:
+            return item_id
+
+    def _quantized(self, key: str, label: str, action: Callable[[bool], None],
+                   pad: Optional[int] = None) -> None:
+        """Run a performance action now, or on the next beat while quantize is on."""
+        if not self.quantizer.submit(key, label, action, preview=self._controller.editing_preview(), pad=pad):
+            action(True)
+
+    def _fire_queued(self) -> None:
+        """Show tick: run queued actions whose beat has come. If the APC is busy, try again on
+        the next tick (a few ms later) instead of blocking the show tick."""
+        if not self._lock.acquire(blocking=False):
+            return
+        try:
+            for item in self.quantizer.due():
+                try:
+                    with self._controller.editing_context(item.preview):
+                        item.action(item.held)
+                except EXPECTED_ERRORS as error:
+                    self._error = f"{item.label}: {error}"
+                    logger.warning("Quantized %s ignored: %s", item.label, error)
+        finally:
+            self._lock.release()
 
     def _colour_pad(self, track: int, pad: int) -> None:
         if self.palette_editing():
@@ -1047,17 +1247,24 @@ class Apc40Control:
         document = self._positions.rig.room_file()
         assignment = self.position_assignment(track)
         moving = any(self.effect_running(track, kind) for kind in MOVEMENT_TYPES)
+        route = self.route_pads()
         aim_reached = all(
             self._positions.assignment_aim_reached(f.patch.id) for f in self.fixtures(track)
         )
         pads = {
-            index: (target.name, "target", assignment.aim_target == target.id and aim_reached, False)
+            index: (
+                target.name, "target",
+                index in route if route is not None
+                else assignment.aim_target == target.id and aim_reached,
+                False,
+            )
             for index, target in enumerate(document.targets[:24])
         }
         pads.update({
             24 + index: (
                 zone.name, "zone", (
-                    zone.id in assignment.include_zones and zone.id not in assignment.exclude_zones
+                    24 + index in route if route is not None
+                    else zone.id in assignment.include_zones and zone.id not in assignment.exclude_zones
                     if moving else assignment.aim_zone == zone.id and aim_reached
                 ),
                 zone.id not in assignment.include_zones or zone.id in assignment.exclude_zones,
@@ -1065,6 +1272,44 @@ class Apc40Control:
             for index, zone in enumerate(document.zones[:16])
         })
         return pads
+
+    def route_effect(self) -> Optional[RunningEffect]:
+        """The Move FX whose route the pads pick: Aim mode on a strip running a beam Move FX."""
+        track = self._position_track
+        if track is None or self._position_mode != "aim":
+            return None
+        effect = self.running_effect(track, EffectType.CIRCLE)
+        return effect if effect is not None and effect.active else None
+
+    def route_pads(self) -> Optional[dict[int, int]]:
+        """Picked pad -> 1-based route order, or None when the pads are not picking a route."""
+        effect = self.route_effect()
+        if effect is None:
+            return None
+        document = self._positions.rig.room_file()
+        if effect.params.target_ids:
+            ids, offset = [t.id for t in document.targets[:24]], 0
+        else:
+            ids, offset = [z.id for z in document.zones[:16]], 24
+        return {
+            offset + ids.index(stop): order
+            for order, stop in enumerate(effect.params.stops, 1) if stop in ids
+        }
+
+    def _route_pad(self, effect: RunningEffect, pad: int, stop: str) -> None:
+        """Toggle one target/zone in the running Move FX route (runtime only, like the knobs)."""
+        assert self._effects is not None and self._position_track is not None
+        params = effect.params
+        is_target = pad < 24
+        stops = list(params.target_ids if is_target else params.zone_ids)
+        if stop in stops:
+            stops.remove(stop)
+        else:
+            stops.append(stop)  # a pad of the other kind starts a new route of its kind
+        self._effects.set_route(
+            effect_owner(self._position_track),
+            stops if is_target else [], [] if is_target else stops,
+        )
 
     def position_dialog_request(self) -> tuple[int, Optional[str]]:
         return self._position_dialog_id, self._position_dialog_kind
@@ -1094,6 +1339,10 @@ class Apc40Control:
             if self._shift:
                 self._request_position_dialog("target", document.targets[pad].id)
                 return
+            route = self.route_effect()
+            if route is not None:
+                self._route_pad(route, pad, document.targets[pad].id)
+                return
             values.update(aim_target=document.targets[pad].id, aim_zone=None)
         else:
             index = pad - 24
@@ -1104,16 +1353,18 @@ class Apc40Control:
             if self._shift:
                 self._request_position_dialog("zone", zone.id)
                 return
+            route = self.route_effect()
+            if route is not None:
+                self._route_pad(route, pad, zone.id)
+                return
             included = list(current.include_zones)
             excluded = list(current.exclude_zones)
             if self._position_mode == "permissions":
-                if zone.id in excluded:
-                    excluded.remove(zone.id)
-                    included = [z for z in included if z != zone.id]
-                elif zone.id in included:
+                if zone.id in included and zone.id not in excluded:
                     included.remove(zone.id)
                     excluded.append(zone.id)
                 else:
+                    excluded = [z for z in excluded if z != zone.id]
                     included.append(zone.id)
                 values.update(include_zones=included, exclude_zones=excluded)
             else:
@@ -1129,10 +1380,11 @@ class Apc40Control:
         """SCENE LAUNCH: show this effect type on the pads; pressing the shown type closes it."""
         if self._effects is None:
             return
-        if self._fx_open and self._fx_type is effect_type:
+        if self._fx_open and not self._fx_combo and self._fx_type is effect_type:
             self._fx_open = False
             return
         self._fx_open = True
+        self._fx_combo = False
         self._position_track = None
         self._fx_type = effect_type
         self._selected = None
@@ -1155,6 +1407,20 @@ class Apc40Control:
         row, column = divmod(pad, hw.PAD_COLUMNS)
         track = column + 1
         if not self.is_active(track):
+            return
+        if self.combo_open():
+            if not any(self.effect_fixtures(track, page) for page in EFFECT_TYPES):
+                return
+            self._fx_track = track
+            if self._shift:
+                self._fx_dialog_id += 1
+                self._fx_dialog = (track, "combo", row, self.fx_component(track))
+                return
+            current = self.combo_effects(track)
+            if current and current[0].combo_slot == row:
+                self._effects.stop_combo(effect_owner(track), component=self.fx_component(track))
+            else:
+                self.start_combo(track, row)
             return
         fixtures = self.effect_fixtures(track, self._fx_type)
         if not fixtures:
@@ -1278,9 +1544,11 @@ class Apc40Control:
             state[("note", 1, hw.NOTE_SESSION_RECORD)] = (
                 hw.LED_ON if self.preview_active() else hw.LED_OFF
             )
+            # METRONOME = quantize: flashes on the beat while on, dark while off.
             phase = self.beat_phase()
             state[("note", 1, hw.NOTE_METRONOME)] = (
-                hw.LED_ON if phase is not None and phase < 0.2 else hw.LED_OFF
+                hw.LED_ON if self.quantizer.enabled() and phase is not None and phase < hw.BEAT_FLASH
+                else hw.LED_OFF
             )
             for pad, velocity in self.pad_colours(blink_on).items():
                 state[("note", 1, hw.pad_note(pad))] = velocity
@@ -1307,27 +1575,51 @@ class Apc40Control:
                     colours.append(0)
                     continue
                 bright, dim = hw.EFFECT_COLOURS[effect_type.value]
-                colour = bright if self._fx_open and effect_type is self._fx_type else dim
+                colour = bright if self._fx_open and not self._fx_combo and effect_type is self._fx_type else dim
                 if self.type_running(effect_type) and not blink_on:
                     colour = 0
                 colours.append(colour)
+            available = self.fx_service is not None and any(
+                self.effect_fixtures(t, page) for t in range(1, hw.TRACKS + 1) for page in EFFECT_TYPES
+            )
+            running = any(any(effect.active for effect in self.combo_effects(t))
+                          for t in range(1, hw.TRACKS + 1))
+            colours.append((hw.EFFECT_COLOURS["combo"][0 if self.combo_open() else 1]
+                            if available and (blink_on or not running) else 0))
+            colours += [0] * (hw.NEXT_SCENE_LAUNCH_INDEX - len(colours))
+            colours.append(self._next_colour(blink_on))
             return colours + [0] * (hw.SCENE_LAUNCH_COUNT - len(colours))
 
-    def pad_colours(self, blink_on: bool = True) -> dict[int, int]:
-        """Palette velocity per pad (0 = dark)."""
+    def _next_colour(self, blink_on: bool) -> int:
+        """NEXT LED: while a step waits it flashes on every beat, together with METRONOME, so the
+        press can be timed by eye; dark grey while a sequence runs."""
+        sequences = self._scenes.sequences
+        status = sequences.status() if sequences is not None else None
+        if status is None or status["status"] not in ("running", "paused"):
+            return 0
+        bright, dim = hw.NEXT_COLOURS
+        if self.quantizer.is_queued("next"):
+            return bright if self._queued_blink_on() else 0
+        if status["waiting"]:
+            phase = self.beat_phase()
+            on = phase < hw.BEAT_FLASH if phase is not None else blink_on
+            return bright if on else 0
+        return dim
+
+    def pad_colours(self, blink_on: bool = True, steady_queued: bool = False) -> dict[int, int]:
+        """Palette velocity per pad (0 = dark). steady_queued: queued pads stay lit (the screen
+        animates them itself)."""
         with self._lock:
             if self._position_track is not None:
                 colours = {pad: 0 for pad in range(hw.PAD_COUNT)}
-                document = self._positions.rig.room_file()
-                assignment = self.position_assignment(self._position_track)
+                route = self.route_pads() or {}
                 for pad, (_, kind, active, excluded) in self.position_pads().items():
-                    explicitly_excluded = (
-                        kind == "zone" and document.zones[pad - 24].id in assignment.exclude_zones
-                    )
                     colours[pad] = (
                         (21 if active else 22) if kind == "target"
-                        else 6 if explicitly_excluded else 1 if excluded else 37 if active else 38
+                        else 6 if excluded else 37 if active else 38
                     )
+                    if pad in route and not blink_on:
+                        colours[pad] = 0
                 return colours
             if self._selected is not None:
                 if self.palette_editing():
@@ -1359,6 +1651,7 @@ class Apc40Control:
                 }
             if self._fx_open:
                 return self._effect_pad_colours(blink_on)
+            queued, fast_on = self.quantizer.queued_pads(), steady_queued or self._queued_blink_on()
             if self._show_page == "sequences":
                 colours = {pad: 0 for pad in range(hw.PAD_COUNT)}
                 sequences = self._scenes.sequences
@@ -1374,30 +1667,45 @@ class Apc40Control:
                                 colours[pad] = hw.SCENE_PAD_COLOURS[assignment.colour] if blink_on else 0
                             else:
                                 colours[pad] = hw.SCENE_PAD_COLOURS[assignment.colour]
+                        if pad in queued and assignment is not None:
+                            colours[pad] = hw.SCENE_PAD_COLOURS[assignment.colour] if fast_on else 0
                 return colours
             active = self._scenes.active_scene()
             scene_ids = {s.id for s in self._scenes.store.all()}
+            accents = self.accents.active()
             colours = {pad: 0 for pad in range(hw.PAD_COUNT)}
             for assignment in self._pads.all():
                 if assignment.scene not in scene_ids:
                     continue
-                if assignment.scene == active and not blink_on:
+                if assignment.pad in accents:
+                    colours[assignment.pad] = hw.ACCENT_ACTIVE_COLOUR
+                    continue
+                if assignment.pad in queued and not fast_on:
+                    continue
+                if (assignment.accent == "off" and assignment.scene == active and not blink_on
+                        and assignment.pad not in queued):
                     continue
                 colours[assignment.pad] = hw.SCENE_PAD_COLOURS[assignment.colour]
             return colours
 
+    def _queued_blink_on(self) -> bool:
+        return int(self._clock() / QUEUED_BLINK_SECONDS) % 2 == 0
+
     def _effect_pad_colours(self, blink_on: bool) -> dict[int, int]:
         """Effects page: each active track's column shows the 5 presets; the running one blinks."""
-        bright, dim = hw.EFFECT_COLOURS[self._fx_type.value]
+        bright, dim = hw.EFFECT_COLOURS["combo" if self.combo_open() else self._fx_type.value]
         colours = {pad: 0 for pad in range(hw.PAD_COUNT)}
         for column in range(hw.PAD_COLUMNS):
             track = column + 1
-            if not self.is_active(track) or not self.effect_fixtures(track, self._fx_type):
+            compatible = (any(self.effect_fixtures(track, page) for page in EFFECT_TYPES)
+                          if self.combo_open() else bool(self.effect_fixtures(track, self._fx_type)))
+            if not self.is_active(track) or not compatible:
                 continue
-            running = self.running_effect(track, self._fx_type)
+            bundled = self.combo_effects(track) if self.combo_open() else []
+            running = bundled[0] if bundled else None if self.combo_open() else self.running_effect(track, self._fx_type)
             for row in range(hw.PAD_ROWS):
                 pad = row * hw.PAD_COLUMNS + column
-                if running is not None and running.preset == row:
+                if running is not None and (running.combo_slot if self.combo_open() else running.preset) == row:
                     colours[pad] = bright if blink_on else 0
                 else:
                     colours[pad] = dim

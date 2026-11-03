@@ -1,14 +1,15 @@
 """Scene assignments of the APC40 clip pads, stored in config/apc40.json.
 
 Pads are numbered 0-39 row by row from the top-left (as on screen). Each assigned pad has a scene
-and a pad colour (a name from `apc40.SCENE_PAD_COLOURS`). A pad whose scene was deleted later is
-kept and shown as "missing" instead of being silently dropped.
+and a pad colour (a name from `apc40.SCENE_PAD_COLOURS`), and optionally an accent mode (see
+accents.py). A pad whose scene was deleted later is kept and shown as "missing" instead of being
+silently dropped.
 """
 
 import json
 from pathlib import Path
 from threading import Lock
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError, model_validator
 
@@ -22,6 +23,9 @@ class PadAssignment(BaseModel):
     pad: StrictInt = Field(ge=0, lt=PAD_COUNT)
     scene: str = Field(min_length=1)
     colour: str = DEFAULT_SCENE_PAD_COLOUR
+    # "off" recalls the look; "hold"/"beats" lay it over the output while held / for N beats.
+    accent: Literal["off", "hold", "beats"] = "off"
+    accent_beats: float = Field(default=2.0, ge=0.25, le=64.0)
 
     @model_validator(mode="after")
     def _known_colour(self) -> "PadAssignment":
@@ -127,6 +131,11 @@ class PadStore:
                 pads=[pads[p] for p in sorted(pads)],
                 sequence_pads=[sequence_pads[p] for p in sorted(sequence_pads)],
             ).model_dump(mode="json")
+            for entry in data["pads"]:
+                if entry["accent"] == "off":  # keep plain look pads as before
+                    del entry["accent"], entry["accent_beats"]
+                elif entry["accent"] == "hold":
+                    del entry["accent_beats"]
             try:
                 write_json_atomic(self._path, data)
             except OSError as error:

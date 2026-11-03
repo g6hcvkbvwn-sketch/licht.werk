@@ -1,3 +1,5 @@
+import { syncBeat } from "./beat";
+
 export interface FixtureInfo {
   id: string;
   name: string;
@@ -38,6 +40,19 @@ export interface Scene {
   groups: Record<string, Record<string, number>>;
   fixtures: Record<string, Record<string, number>>;
   positions?: Record<string, ScenePosition>;
+  /** A look: the FX set applied on recall. null/absent = plain scene (FX untouched). */
+  fx?: LookFx | null;
+}
+
+export interface LookFx {
+  modes: Record<string, "group" | "single">;
+  strips: {
+    strip: string;
+    component: "beam" | "ring";
+    preset: number;
+    combo: string | null;
+    effects: { name: string; kind: string; params: Record<string, unknown> }[];
+  }[];
 }
 
 export interface ScenePosition {
@@ -52,6 +67,8 @@ export interface SequenceStep {
   scene_id: string;
   fade?: number | null;
   hold: number;
+  /** After its fade the step waits for NEXT (hold is ignored). */
+  wait?: boolean;
 }
 
 export interface Sequence {
@@ -69,7 +86,15 @@ export interface SequenceRuntime {
   status: "running" | "paused" | "stopped" | "completed";
   step_index: number;
   scene_name?: string;
-  phase: "fade" | "hold";
+  phase: "fade" | "hold" | "wait";
+  waiting?: boolean;
+  step_count?: number;
+  step_wait?: boolean;
+  /** Time until the next step starts by itself, in the sequence's unit (null: waits for NEXT). */
+  until_next?: number | null;
+  countdown_step?: number;
+  until_next_seconds?: number | null;
+  next_scene_name?: string | null;
   progress: number;
   remaining?: number;
   remaining_seconds?: number;
@@ -83,11 +108,28 @@ export interface ShowState {
   locks: Record<string, string[]>;
   sequence: SequenceRuntime | null;
   live_sequence: SequenceRuntime | null;
+  look_notice?: string | null;
+  beat?: { bpm: number; phase: number };
+  quantize?: { available: boolean; enabled: boolean; queued: string[] } | null;
+  modifiers?: LiveModifiers | null;
 }
 
-export const getShow = () => request<ShowState>("/api/show");
+export interface LiveModifiers {
+  speed: 0.25 | 0.5 | 1 | 2 | 4;
+  sequence_speed: 0.25 | 0.5 | 1 | 2 | 4;
+  tint: string | null;
+  excluded_strips: number[];
+  choices: { track: number; label: string }[];
+}
+
+export const setLiveModifiers = (settings: Omit<LiveModifiers, "choices">) =>
+  request<ShowState>("/api/show/modifiers", { method: "PUT", body: JSON.stringify(settings) });
+
+export const getShow = () => withBeat(request<ShowState>("/api/show"), (s) => [s.beat?.bpm, s.beat?.phase]);
 export const setGlobals = (fixtures: Record<string, string[]>) =>
   request<ShowState>("/api/show/globals", { method: "PUT", body: JSON.stringify({ fixtures }) });
+export const setQuantize = (enabled: boolean) =>
+  request<ShowState>("/api/show/quantize", { method: "PUT", body: JSON.stringify({ enabled }) });
 export const releaseControl = (fixtureIds?: string[], attributes?: string[]) =>
   request<ShowState>("/api/show/release", {
     method: "POST", body: JSON.stringify({ fixture_ids: fixtureIds, attributes }),
@@ -108,7 +150,7 @@ export const saveSequence = (sequence: Sequence, create = false) => {
 export const deleteSequence = (id: string) =>
   request(`/api/sequences/${encodeURIComponent(id)}`, { method: "DELETE" });
 export const sequenceCommand = (
-  id: string, command: "start" | "pause" | "resume" | "stop" | "restart" | "apply", preview?: boolean,
+  id: string, command: "start" | "pause" | "resume" | "stop" | "restart" | "apply" | "next", preview?: boolean,
 ) => request(`/api/sequences/${encodeURIComponent(id)}/${command}`, {
   method: "POST", body: JSON.stringify({ preview }),
 });
@@ -118,6 +160,15 @@ export class ConnectionError extends Error {
   constructor() {
     super("Cannot reach the LichtWerk backend. The lights keep their last output while it is away.");
   }
+}
+
+/** Re-sync the shared on-screen beat clock from a response that carries the tempo. */
+async function withBeat<T>(call: Promise<T>, pick: (value: T) => [number | null | undefined, number | null | undefined]): Promise<T> {
+  const sent = performance.now();
+  const value = await call;
+  const [bpm, phase] = pick(value);
+  syncBeat(bpm, phase, sent, performance.now());
+  return value;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -227,6 +278,13 @@ export const setMaster = (level: number) =>
 export const getScenes = () => request<Scene[]>("/api/scenes");
 
 /** Stores the current live values of all enabled fixtures as a new scene. */
+/** The live state as an unsaved scene; includeFx adds the running FX (a look). */
+export const captureSceneDraft = (fixtureIds: string[] | null, includeFx: boolean) =>
+  request<Omit<Scene, "id">>("/api/scenes/capture-draft", {
+    method: "POST",
+    body: JSON.stringify({ name: "Live look", fixture_ids: fixtureIds, include_position: true, include_fx: includeFx }),
+  });
+
 export const captureScene = (name: string, fadeSeconds: number) =>
   request<Scene>("/api/scenes/capture", {
     method: "POST",
@@ -525,6 +583,7 @@ export const APC40 = {
   sceneLaunchFirst: 0x52,
   ring: 0x42,
   tapTempo: 0x63,
+  metronome: 0x5a,
   sessionRecord: 0x66,
   trackFader: 0x07,
   tempo: 0x0d,
@@ -549,6 +608,8 @@ export interface Apc40Strip {
   family: string | null;
   active: boolean;
   intensity: number | null;
+  pickup: boolean; // soft takeover: the fader waits to pass `level`
+  level: number | null;
   saturation: number | null;
   strobe_on: boolean;
   flash_held: boolean;
@@ -584,11 +645,16 @@ export interface Apc40Pad {
   scene: string | null;
   scene_colour: string | null;
   missing: boolean;
+  queued?: boolean;
   active: boolean;
   kind: string | null;
   included: boolean;
   excluded: boolean;
   explicitly_excluded: boolean;
+  route_order?: number | null;
+  look?: boolean;
+  accent?: PadAccent | null;
+  accent_beats?: number | null;
   sequence: string | null;
   sequence_loop?: boolean | null;
   fixture_badges: string[];
@@ -601,7 +667,7 @@ export interface Apc40State {
   position_dialog_kind: "target" | "zone" | null;
   position_dialog_item: string | null;
   position_mode: "aim" | "permissions";
-  show_dialog: { id: number; kind: "scene" | "sequence" | null; item: string | null; pad: number };
+  show_dialog: { id: number; kind: "scene" | "sequence" | null; item: string | null; pad: number; capture_live?: boolean };
   fx_dialog: { id: number; track: number | null; page: string | null; slot: number; component: "beam" | "ring" | null };
   connected: boolean;
   device: string | null;
@@ -614,6 +680,10 @@ export interface Apc40State {
   selected: number | null;
   pad_mode: "scenes" | "sequences" | "colours" | "effects" | "positions";
   fx_track: number | null;
+  combo_open: boolean;
+  combo_knob_family: string;
+  combo_knob_families: string[];
+  combo_status: string | null;
   effect_types: Apc40EffectType[];
   bpm: number | null;
   beat_phase: number | null;
@@ -621,27 +691,37 @@ export interface Apc40State {
   shift: boolean;
   error: string | null;
   fx_notice: string | null;
+  look_notice?: string | null;
+  sequence?: SequenceRuntime | null;
+  next_available?: boolean;
+  next_waiting?: boolean;
+  next_queued?: boolean;
+  quantize?: boolean;
   pads: Apc40Pad[];
   knobs: { knob: number; function: string | null; label: string | null; value: number | null; display: string | null }[];
   scene_colours: Record<string, string>;
   last_event: { kind: string; channel: number; number: number; value: number } | null;
 }
 
-export const getApc40 = () => request<Apc40State>("/api/apc40");
+export const getApc40 = () => withBeat(request<Apc40State>("/api/apc40"), (s) => [s.bpm, s.beat_phase]);
 
 export const sendApc40Event = (kind: "note" | "cc", channel: number, number: number, value: number) =>
-  request<Apc40State>("/api/apc40/event", {
+  withBeat(request<Apc40State>("/api/apc40/event", {
     method: "POST",
     body: JSON.stringify({ kind, channel, number, value }),
-  });
+  }), (s) => [s.bpm, s.beat_phase]);
 
 export const setApc40Tempo = (bpm: number) =>
-  request<Apc40State>("/api/apc40/tempo", { method: "PUT", body: JSON.stringify({ bpm }) });
+  withBeat(request<Apc40State>("/api/apc40/tempo", { method: "PUT", body: JSON.stringify({ bpm }) }),
+    (s) => [s.bpm, s.beat_phase]);
 
-export const assignApc40Pad = (pad: number, scene: string, colour: string) =>
+/** "off" = the pad recalls the look; "hold"/"beats" = accent while held / for N beats. */
+export type PadAccent = "off" | "hold" | "beats";
+
+export const assignApc40Pad = (pad: number, scene: string, colour: string, accent: PadAccent = "off", accentBeats = 2) =>
   request<Apc40State>(`/api/apc40/pads/${pad}`, {
     method: "PUT",
-    body: JSON.stringify({ scene, colour }),
+    body: JSON.stringify({ scene, colour, accent, accent_beats: accentBeats }),
   });
 
 export const clearApc40Pad = (pad: number) =>

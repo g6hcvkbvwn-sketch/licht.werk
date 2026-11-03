@@ -115,6 +115,8 @@ export function Knob(props: KnobProps) {
 
 interface FaderProps extends Selectable {
   value: number | null;
+  /** Soft takeover: the real level the physical fader must pass before it controls again. */
+  ghost?: number | null;
   label: string;
   sublabel: string;
   onValue: (value127: number) => void;
@@ -152,9 +154,11 @@ export function Fader(props: FaderProps) {
       >
         <div className="fader-fill" style={{ height: `calc(${shown} * (100% - 18px) + 9px)` }} />
         <div className="fader-cap" style={{ bottom: `calc(${shown} * (100% - 18px))` }} />
+        {props.ghost != null && <div className="fader-ghost" title="Current level: move the fader past it to take over"
+          style={{ bottom: `calc(${props.ghost} * (100% - 18px) + 7px)` }} />}
       </div>
       <div className="control-label">{props.label || "—"}</div>
-      <div className="control-sublabel">{props.sublabel}</div>
+      <div className={props.ghost != null ? "control-sublabel pickup" : "control-sublabel"}>{props.sublabel}</div>
     </div>
   );
 }

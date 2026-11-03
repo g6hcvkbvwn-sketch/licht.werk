@@ -15,7 +15,8 @@ export default function ScenePositionEditor({ name, position, room, onChange }: 
     });
   };
   const aimed = room.zones.find((z) => z.id === base.zone_id);
-  const overlaps = aimed ? room.zones.filter((z) => base.excluded_zone_ids.includes(z.id) && zonesOverlap(aimed, z)) : [];
+  const overlaps = aimed ? room.zones.filter((z) =>
+    (!base.included_zone_ids.includes(z.id) || base.excluded_zone_ids.includes(z.id)) && zonesOverlap(aimed, z)) : [];
   return <div className="editor-position">
     <label>{name} positioning<select aria-label={`${name} position mode`} value={mode} onChange={(e) => {
       if (e.target.value === "raw") onChange(undefined);
@@ -41,13 +42,13 @@ export default function ScenePositionEditor({ name, position, room, onChange }: 
       <p className="muted">Optional movement areas. Exclusions win, even where they overlap the aimed zone.</p>
       {room.zones.filter((z) => z.id !== base.zone_id).map((z) => <div key={z.id}>
         <label>{z.name}<select aria-label={`${name}: ${z.name} permission`}
-          value={base.included_zone_ids.includes(z.id) ? "include" : base.excluded_zone_ids.includes(z.id) ? "exclude" : "unchanged"}
+          value={base.included_zone_ids.includes(z.id) && !base.excluded_zone_ids.includes(z.id) ? "include" : "exclude"}
           onChange={(e) => onChange({
             ...base,
             included_zone_ids: [...base.included_zone_ids.filter((id) => id !== z.id), ...(e.target.value === "include" ? [z.id] : [])],
             excluded_zone_ids: [...base.excluded_zone_ids.filter((id) => id !== z.id), ...(e.target.value === "exclude" ? [z.id] : [])],
           })}>
-          <option value="unchanged">Not included</option><option value="include">Include</option><option value="exclude">Exclude</option>
+          <option value="include">Included</option><option value="exclude">Excluded</option>
         </select></label>
         {base.included_zone_ids.includes(z.id) && base.excluded_zone_ids.includes(z.id)
           && <small role="alert" className="editor-error">Both included and excluded. Choose one permission explicitly.</small>}

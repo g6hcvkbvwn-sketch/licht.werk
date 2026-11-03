@@ -36,7 +36,7 @@ export default function SceneTable({ draft, scopes, room, selected, onSelect, on
   };
   return <div className="editor-table-scroll"><table className="editor-table">
     <caption className="muted">Controller track order · select participating columns, then the fields to store. Unselected fields stay unchanged.</caption>
-    <thead><tr><th scope="col">Scene controls</th>{scopes.map((scope) => <th scope="col" key={scope.key} className={scope.group ? "editor-group" : ""}>
+    <thead><tr><th scope="col">Look controls</th>{scopes.map((scope) => <th scope="col" key={scope.key} className={scope.group ? "editor-group" : ""}>
       <label><input type="checkbox" checked={selected.has(scope.key)} onChange={(e) => onSelect(scope, e.target.checked)} />
         {scope.name}</label>
     </th>)}</tr></thead>

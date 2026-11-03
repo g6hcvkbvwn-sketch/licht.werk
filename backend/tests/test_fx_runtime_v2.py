@@ -305,3 +305,116 @@ def test_frame_restores_clock_sampling_after_exception():
             raise RuntimeError("abort")
     assert engine._now() == clock.now
     assert engine._beats(clock.now) == pytest.approx(2.0)
+
+
+ZONE_B = INCLUDE.model_copy(update={
+    "id": "floor-b", "name": "Floor B", "corner": {"x": 3.5, "y": 5.0}, "length": 1.5, "width": 2.0,
+})
+
+
+def zone_rig():
+    patch = club_patch()
+    rig = make_rig(patch)
+    rig.save_zone(ZONE_B)
+    rig.set_assignments({HEAD: HeadAssignment(include_zones=[INCLUDE.id, ZONE_B.id])})
+    return patch, rig
+
+
+def centre_aim(rig, patch, zone, reference=0.5):
+    from lichtwerk.positioning import aim_at
+    from test_zones import SIZE
+
+    return aim_at(rig.head(HEAD), patch.get(HEAD).definition.motion, zone.point_at(0.5, 0.5, SIZE), reference)
+
+
+def test_move_route_modes_are_explicit_and_exclusive():
+    assert params().stops == [] and not params().touring and not params().single_point
+    single = params(zone_ids=["a"])
+    assert single.single_point and not single.touring
+    assert params(target_ids=["a"], pattern="none").touring
+    assert params(zone_ids=["a", "b"], pattern="circle").touring
+    with pytest.raises(ValidationError, match="either named targets or named zones"):
+        params(target_ids=["a"], zone_ids=["b"])
+    with pytest.raises(ValidationError, match="duplicate"):
+        params(zone_ids=["a", "a"])
+
+
+def test_zone_route_requires_included_zone():
+    patch, rig = zone_rig()
+    rig.set_assignments({HEAD: HeadAssignment(include_zones=[INCLUDE.id])})
+    engine = EffectEngine(patch, TempoClock(clock=FakeClock()), rig=rig)
+    definition = FxDefinition(name="Zone", kind=EffectType.CIRCLE, params=params(zone_ids=[ZONE_B.id]))
+    with pytest.raises(ValueError, match="excluded"):
+        engine.validate_start(EffectType.CIRCLE, [HEAD], definition)
+    excluded = HeadAssignment(include_zones=[INCLUDE.id, ZONE_B.id], exclude_zones=[ZONE_B.id])
+    rig.set_assignments({HEAD: excluded})
+    with pytest.raises(ValueError, match="excluded"):
+        engine.validate_start(EffectType.CIRCLE, [HEAD], definition)
+
+
+def test_single_zone_anchors_continuous_pattern_without_dark_travel():
+    patch, rig = zone_rig()
+    clock = FakeClock()
+    engine = EffectEngine(patch, TempoClock(clock=clock), rig=rig)
+    definition = FxDefinition(
+        name="Anchor", kind=EffectType.CIRCLE,
+        params=params(timing="seconds", seconds=4.0, zone_ids=[ZONE_B.id], size=0.0),
+    )
+    assert engine.validate_start(EffectType.CIRCLE, [HEAD], definition) == (HEAD,)
+    engine.start("a", EffectType.CIRCLE, 0, [HEAD], definition=definition)
+    base = {"pan": 0.1, "tilt": 0.1, "intensity": 1.0}
+    frame = engine.render(HEAD, base)
+    centre = centre_aim(rig, patch, ZONE_B, base["pan"])
+    assert not frame.dark_movement and not frame.static_target
+    assert frame.values["pan"] == pytest.approx(centre.pan)
+    assert frame.values["tilt"] == pytest.approx(centre.tilt)
+
+    moving = definition.model_copy(update={"params": definition.params.model_copy(update={"size": 0.8})})
+    engine.start("a", EffectType.CIRCLE, 0, [HEAD], definition=moving)
+    samples = []
+    for _ in range(4):
+        clock.now += 1.0
+        frame = engine.render(HEAD, base)
+        assert not frame.dark_movement
+        samples.append((round(frame.values["pan"], 6), round(frame.values["tilt"], 6)))
+    assert len(set(samples)) > 1
+
+
+def test_single_target_anchor_is_static_hold_at_size_zero():
+    patch = club_patch()
+    rig = make_rig(patch)
+    rig.set_assignments({HEAD: HeadAssignment(include_zones=[INCLUDE.id])})
+    engine = EffectEngine(patch, TempoClock(clock=FakeClock()), rig=rig)
+    definition = FxDefinition(
+        name="Anchor", kind=EffectType.CIRCLE, params=params(target_ids=["clear"], size=0.0),
+    )
+    engine.start("a", EffectType.CIRCLE, 0, [HEAD], definition=definition)
+    frame = engine.render(HEAD, {"pan": 0.5, "tilt": 0.5, "intensity": 1.0})
+    assert not frame.dark_movement and frame.static_target
+    assert engine.stationary_target(HEAD, frame.values)
+
+
+def test_zone_tour_travels_dark_and_holds_at_each_zone_centre():
+    patch, rig = zone_rig()
+    clock = FakeClock()
+    engine = EffectEngine(patch, TempoClock(clock=clock), rig=rig)
+    definition = FxDefinition(
+        name="Zones", kind=EffectType.CIRCLE,
+        params=params(timing="seconds", zone_ids=[INCLUDE.id, ZONE_B.id], pattern="none", travel=1, hold=2),
+    )
+    engine.start("z", EffectType.CIRCLE, 0, [HEAD], definition=definition)
+    base = {"pan": 0.5, "tilt": 0.5, "intensity": 1.0}
+    assert engine.render(HEAD, base).dark_movement
+    for elapsed, zone, dark in ((1.5, INCLUDE, False), (3.5, None, True), (4.5, ZONE_B, False),
+                                (6.5, None, True), (7.5, INCLUDE, False)):
+        clock.now = 100.0 + elapsed
+        frame = engine.render(HEAD, base)
+        assert frame.dark_movement is dark, elapsed
+        assert not frame.static_target
+        if zone is not None:
+            centre = centre_aim(rig, patch, zone)
+            assert frame.values["pan"] == pytest.approx(centre.pan)
+            assert frame.values["tilt"] == pytest.approx(centre.tilt)
+    clock.now = 103.0
+    assert engine.set_param("z", EffectType.CIRCLE, "speed", 0.5)
+    assert engine.running("z", EffectType.CIRCLE).params.travel != 1

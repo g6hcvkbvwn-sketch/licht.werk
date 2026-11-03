@@ -98,7 +98,7 @@ def test_permission_pads_never_move_and_aim_preserves_permissions(tmp_path, prev
         controller = app.state.fixture_controller
         before = controller.state(HEAD)
         note(hw.NOTE_DEVICE_LOCK)
-        for expected in ("included", "excluded", "neither"):
+        for expected in ("included", "excluded", "included", "excluded"):
             view = note(hw.pad_note(25))
             assert view["error"] is None
             assert view["pads"][25]["included"] == (expected == "included")
@@ -109,7 +109,7 @@ def test_permission_pads_never_move_and_aim_preserves_permissions(tmp_path, prev
         assert view["error"] is None
         assert rig.assignment(HEAD).aim_zone == "floor-area"
         assert rig.assignment(HEAD).include_zones == []
-        assert rig.assignment(HEAD).exclude_zones == []
+        assert set(rig.assignment(HEAD).exclude_zones) == {"booth", "floor-area"}
         assert not view["pads"][25]["included"]
         after = controller.state(HEAD)
         note(hw.NOTE_SHIFT)

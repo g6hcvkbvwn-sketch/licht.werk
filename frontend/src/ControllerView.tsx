@@ -218,7 +218,7 @@ export default function ControllerView({ scenes, onScenesChanged }: Props) {
           {pad("exit-setup", state.blackout ? "blackout-pad" : "")}
         </div>
         <div className="legend muted">
-          <span className="dot amber" /> assigned <span className="dot green" /> active scene{" "}
+          <span className="dot amber" /> assigned <span className="dot green" /> active look{" "}
           <span className="dot red" /> held / blackout · Preview/Go: green = live, amber = preview
         </div>
       </div>
@@ -227,7 +227,7 @@ export default function ControllerView({ scenes, onScenesChanged }: Props) {
         <aside className="side-panel collapsed">
           <button
             className="panel-handle"
-            title="Show scene capture and ASSIGN CONTROLS"
+            title="Show look capture and ASSIGN CONTROLS"
             onClick={() => setPanelOpen(true)}
           >
             ◀ SCENES · ASSIGN
@@ -299,7 +299,7 @@ function CapturePanel(props: {
   const active = props.scenes.find((s) => s.id === props.activeScene);
   return (
     <div className="panel-block">
-      <div className="panel-title">Active scene</div>
+      <div className="panel-title">Active look</div>
       <div className="active-scene">{active ? active.name : "—"}</div>
       <form
         className="side-form"
@@ -314,8 +314,8 @@ function CapturePanel(props: {
             .catch((err: Error) => props.onError(err.message));
         }}
       >
-        <div className="panel-title">Save current look as scene</div>
-        <input placeholder="Scene name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+        <div className="panel-title">Save current look</div>
+        <input placeholder="Look name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
         <label className="inline">
           Fade (s)
           <input
@@ -324,7 +324,7 @@ function CapturePanel(props: {
           />
         </label>
         <button type="submit" className="primary" disabled={!name.trim()}>
-          Save scene
+          Save look
         </button>
         <p className="muted hint">Then use ASSIGN CONTROLS to put it on a matrix button.</p>
       </form>
@@ -407,7 +407,7 @@ function AssignPanel(props: {
       </label>
       {needsTarget && (
         <label className="stacked">
-          {info?.target === "scene" ? "Scene" : "Fixtures"}
+          {info?.target === "scene" ? "Look" : "Fixtures"}
           <select value={target} onChange={(e) => setTarget(e.target.value)}>
             <option value="">— choose —</option>
             {targetOptions.map((t) => (

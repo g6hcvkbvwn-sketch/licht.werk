@@ -150,30 +150,30 @@
   ],
   "assignments": {
     "moving-head-1": {
-      "aim_target": "dance-floor-center",
+      "aim_target": "floor-left-upper",
       "aim_zone": null,
       "include_zones": [
-        "dancfloor",
-        "dj-booth",
-        "absorber-booth-rechts",
-        "absorber-booth-links",
-        "absorber-linke-wand",
         "absorber-ru-ckwand-rechts-neben-tu-r",
-        "absorber-ru-ckwand-links-neben-tu-r"
+        "dancfloor",
+        "absorber-booth-links",
+        "absorber-booth-rechts",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "dj-booth"
       ],
       "exclude_zones": []
     },
     "moving-head-2": {
-      "aim_target": "dance-floor-center",
+      "aim_target": "floor-right-upper",
       "aim_zone": null,
       "include_zones": [
-        "dancfloor",
-        "dj-booth",
-        "absorber-booth-rechts",
-        "absorber-booth-links",
-        "absorber-linke-wand",
         "absorber-ru-ckwand-rechts-neben-tu-r",
-        "absorber-ru-ckwand-links-neben-tu-r"
+        "dancfloor",
+        "absorber-booth-links",
+        "absorber-booth-rechts",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "dj-booth"
       ],
       "exclude_zones": []
     }
@@ -186,7 +186,12 @@
         "absorber-ru-ckwand-links-neben-tu-r"
       ],
       "exclude_zones": [
-        "dj-booth"
+        "dj-booth",
+        "dancfloor",
+        "absorber-booth-rechts",
+        "absorber-booth-links",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-rechts-neben-tu-r"
       ]
     },
     "fixture:moving-head-2": {
@@ -196,20 +201,25 @@
         "absorber-ru-ckwand-links-neben-tu-r"
       ],
       "exclude_zones": [
-        "dj-booth"
-      ]
-    },
-    "apc40:2": {
-      "aim_target": "dance-floor-center",
-      "aim_zone": null,
-      "include_zones": [
-        "dancfloor",
         "dj-booth",
+        "dancfloor",
         "absorber-booth-rechts",
         "absorber-booth-links",
         "absorber-linke-wand",
+        "absorber-ru-ckwand-rechts-neben-tu-r"
+      ]
+    },
+    "apc40:2": {
+      "aim_target": null,
+      "aim_zone": null,
+      "include_zones": [
         "absorber-ru-ckwand-rechts-neben-tu-r",
-        "absorber-ru-ckwand-links-neben-tu-r"
+        "dancfloor",
+        "absorber-booth-links",
+        "absorber-booth-rechts",
+        "absorber-linke-wand",
+        "absorber-ru-ckwand-links-neben-tu-r",
+        "dj-booth"
       ],
       "exclude_zones": []
     },
@@ -239,7 +249,8 @@
         "absorber-ru-ckwand-rechts-neben-tu-r"
       ],
       "exclude_zones": [
-        "dj-booth"
+        "dj-booth",
+        "dancfloor"
       ]
     }
   }

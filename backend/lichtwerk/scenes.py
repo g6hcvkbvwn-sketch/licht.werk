@@ -19,6 +19,7 @@ from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from .effects import FxDefinition, family
 from .fixtures import ID_PATTERN
 from .patch import Patch
 from .transitions import MAX_FADE_SECONDS
@@ -45,17 +46,45 @@ class ScenePosition(BaseModel):
     @model_validator(mode="after")
     def valid_aim(self) -> "ScenePosition":
         if self.target_id and (self.zone_id or self.spot):
-            raise ValueError("A scene position selects a named target OR a zone/spot.")
+            raise ValueError("A look position selects a named target OR a zone/spot.")
         if self.spot is not None and not self.zone_id:
-            raise ValueError("A scene spot requires a zone.")
+            raise ValueError("A look spot requires a zone.")
         if not self.target_id and not self.zone_id:
-            raise ValueError("A scene position requires a target or zone.")
+            raise ValueError("A look position requires a target or zone.")
         if self.zone_id:
             self.included_zone_ids = list(dict.fromkeys([self.zone_id, *self.included_zone_ids]))
             self.excluded_zone_ids = [zone for zone in self.excluded_zone_ids if zone != self.zone_id]
         if set(self.included_zone_ids) & set(self.excluded_zone_ids):
             raise ValueError("A zone cannot be both included and excluded.")
         return self
+
+
+class LookStripFx(BaseModel):
+    """FX that ran on one controller strip when a look was captured (a snapshot, not a preset link)."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    strip: str = Field(min_length=1)  # the strip's target: group or fixture id
+    component: Literal["beam", "ring"] = "beam"
+    preset: int = Field(ge=0)  # FX / Combo row it was launched from
+    combo: Optional[str] = None  # Combo name when the effects ran as one Combo
+    effects: list[FxDefinition] = Field(min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def valid_bundle(self) -> "LookStripFx":
+        if self.combo is None and len(self.effects) != 1:
+            raise ValueError("A single look FX entry holds exactly one effect.")
+        pages = [family(effect.kind) for effect in self.effects]
+        if len(set(pages)) != len(pages):
+            raise ValueError("A look FX entry can include only one effect per family.")
+        return self
+
+
+class LookFx(BaseModel):
+    """The FX set of a look: strip modes plus the FX of the strips whose fixtures are in it."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    modes: dict[str, Literal["group", "single"]] = Field(default_factory=dict)
+    strips: list[LookStripFx] = Field(default_factory=list)
 
 
 class SceneContent(BaseModel):
@@ -70,6 +99,8 @@ class SceneContent(BaseModel):
     groups: dict[str, Values] = Field(default_factory=dict)
     fixtures: dict[str, Values] = Field(default_factory=dict)
     positions: dict[str, ScenePosition] = Field(default_factory=dict)
+    # None = a plain scene: recall leaves running FX untouched.
+    fx: Optional[LookFx] = None
 
     @model_validator(mode="after")
     def valid_fade_beats(self) -> "SceneContent":
@@ -119,9 +150,24 @@ def scene_problems(scene: SceneContent, patch: Patch) -> list[str]:
             problems.append(f"unknown fixture '{fixture_id}'")
         elif not {"pan", "tilt"} <= set(fixture.mode.attributes()):
             problems.append(f"fixture '{fixture_id}' does not support positioning")
+    if scene.fx is not None:
+        for entry in scene.fx.strips:
+            if entry.strip not in groups and entry.strip not in patched:
+                problems.append(f"look FX for unknown strip '{entry.strip}'")
     if not scene.groups and not scene.fixtures and not scene.positions:
         problems.append("the scene contains no values")
     return problems
+
+
+def look_route_references(scene: SceneContent) -> tuple[set[str], set[str]]:
+    """Named targets and zones used by the Move routes of a look's FX set."""
+    targets: set[str] = set()
+    zones: set[str] = set()
+    for entry in scene.fx.strips if scene.fx is not None else ():
+        for effect in entry.effects:
+            targets.update(effect.params.target_ids)
+            zones.update(effect.params.zone_ids)
+    return targets, zones
 
 
 def resolve_scene(scene: SceneContent, patch: Patch) -> dict[str, dict[str, float]]:
@@ -161,6 +207,7 @@ class SceneStore:
         self._lock = RLock()
         self._scenes: list[Scene] = [scene.model_copy(deep=True) for scene in scenes]
         self.position_validator = None
+        self.route_validator = None
         self.delete_guard = None
 
     @classmethod
@@ -202,7 +249,7 @@ class SceneStore:
             for scene in self._scenes:
                 if scene.id == scene_id:
                     return scene.model_copy(deep=True)
-        raise KeyError(f"Scene '{scene_id}' does not exist.")
+        raise KeyError(f"Look '{scene_id}' does not exist.")
 
     def create(self, content: SceneContent) -> Scene:
         self._check(content)
@@ -237,9 +284,11 @@ class SceneStore:
     def _check(self, content: SceneContent) -> None:
         problems = scene_problems(content, self._patch)
         if problems:
-            raise ValueError("Invalid scene: " + "; ".join(problems) + ".")
+            raise ValueError("Invalid look: " + "; ".join(problems) + ".")
         if content.positions and self.position_validator is not None:
             self.position_validator({key: value.model_dump() for key, value in content.positions.items()})
+        if content.fx is not None and self.route_validator is not None:
+            self.route_validator(content)
 
     def _unique_id(self, base: str) -> str:
         taken = {scene.id for scene in self._scenes}

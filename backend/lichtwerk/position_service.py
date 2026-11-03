@@ -127,6 +127,32 @@ class PositionService:
             }
         return entries
 
+    def scene_aims(self, entries: dict[str, dict]) -> dict[str, tuple[float, float, bool]]:
+        """Pan/tilt of a look's named positions without applying them (accents).
+
+        Returns (pan, tilt, is_named_target) per enabled head. Nothing is changed: the
+        heads' aims and zone permissions stay as they are.
+        """
+        self.validate_scene_positions(entries)
+        document = self._rig.room_file(live=True)
+        result: dict[str, tuple[float, float, bool]] = {}
+        for head, values in entries.items():
+            if not self._controller.patch.get(head).patch.enabled:
+                continue
+            entry = ScenePositionEntry.model_validate(values)
+            motion, setup = self._head(head)
+            if entry.target_id is not None:
+                point = self.resolve_target(entry.target_id)
+            else:
+                assert entry.zone_id is not None
+                if document.size is None:
+                    raise NotConfiguredError("Measure the room before recalling zone scenes.")
+                spot = entry.spot or SceneSpot()
+                point = document.zone(entry.zone_id).point_at(spot.u, spot.v, document.size)
+            aim = aim_at(setup, motion, point, self._controller.live_state(head)["pan"])
+            result[head] = (aim.pan, aim.tilt, entry.target_id is not None)
+        return result
+
     def apply_scene_positions(
         self, entries: dict[str, dict], fade_seconds: float = 0,
         preview: Optional[bool] = None,
@@ -179,7 +205,8 @@ class PositionService:
                     )
 
     def strip_assignment(self, owner: str) -> HeadAssignment:
-        return self._rig.room_file().strip_assignments.get(owner, HeadAssignment()).model_copy(deep=True)
+        document = self._rig.room_file()
+        return document.permissions(document.strip_assignments.get(owner, HeadAssignment()))
 
     def strip_active(self, owner: str) -> bool:
         return owner in self._active()

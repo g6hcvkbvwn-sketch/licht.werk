@@ -78,10 +78,10 @@ export default function SequenceDialog({ sequence, pad, onClose, onSaved }: Sequ
   const validation: string[] = [];
   if (!draft.name.trim()) validation.push("Enter a sequence name.");
   if (draft.name.length > 80) validation.push("Sequence names can have at most 80 characters.");
-  if (!draft.steps.length) validation.push("Add at least one scene step.");
+  if (!draft.steps.length) validation.push("Add at least one look step.");
   draft.steps.forEach((s, i) => {
-    if (loaded && !scenes.some((scene) => scene.id === s.scene_id)) validation.push(`Step ${i + 1}: choose an existing scene.`);
-    const valid = draft.timing === "beats" ? BEATS.includes(s.hold) : validNumber(s.hold, 0.01, 600);
+    if (loaded && !scenes.some((scene) => scene.id === s.scene_id)) validation.push(`Step ${i + 1}: choose an existing look.`);
+    const valid = s.wait || (draft.timing === "beats" ? BEATS.includes(s.hold) : validNumber(s.hold, 0.01, 600));
     if (!valid) validation.push(`Step ${i + 1}: choose a valid hold after fade.`);
     if (s.fade != null && !(draft.timing === "beats" ? [0, ...BEATS].includes(s.fade) : validNumber(s.fade, 0, 600)))
       validation.push(`Step ${i + 1}: choose a valid incoming fade.`);
@@ -108,7 +108,7 @@ export default function SequenceDialog({ sequence, pad, onClose, onSaved }: Sequ
     return !fixture || attrs.some((a) => !fixture.attributes.includes(a));
   });
   const referenced = scenes.filter((s) => draft.steps.some((step) => step.scene_id === s.id));
-  const fadeLabel = (scene?: Scene) => !scene ? "missing scene"
+  const fadeLabel = (scene?: Scene) => !scene ? "missing look"
     : (scene.fade_timing ?? "seconds") === "beats" ? `${scene.fade_beats ?? 1} beats` : `${scene.fade_seconds} s`;
   const dirty = JSON.stringify(draft) !== baseline;
   const applyReason = existing ? "Assigning an existing sequence does not refresh a run."
@@ -137,7 +137,7 @@ export default function SequenceDialog({ sequence, pad, onClose, onSaved }: Sequ
     </>}>
     {creatingScene && <SceneDialog onClose={() => setCreatingScene(false)}
       onSaved={() => { void getScenes().then(setScenes); }} />}
-    <p className="muted">Reusable scenes play in order. Each step takes incoming fade + hold after fade.</p>
+    <p className="muted">Reusable looks play in order. Each step takes its incoming fade, then either holds for a set time or waits for NEXT (SCENE LAUNCH 5). NEXT also skips a timed step early.</p>
     {pad !== undefined && !sequence && <label>Assign existing sequence<select value={existing} onChange={(e) => setExisting(e.target.value)}>
       <option value="">Create new below</option>{sequences.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
     </select></label>}
@@ -161,16 +161,20 @@ export default function SequenceDialog({ sequence, pad, onClose, onSaved }: Sequ
         </select></label>}
         {draft.timing === "beats" && <p className="muted">Inherited seconds fades round upward to a supported beat length at launch (maximum 32). Zero remains a cut.</p>}
         <ol className="sequence-steps">{draft.steps.map((s, i) => <li key={i} className="sequence-step">
-          <label>Scene {i + 1}<select required value={s.scene_id} onChange={(e) => step(i, { scene_id: e.target.value })}>
-            {!scenes.some((scene) => scene.id === s.scene_id) && <option value={s.scene_id}>Missing scene · {s.scene_id}</option>}
+          <label>Look {i + 1}<select required value={s.scene_id} onChange={(e) => step(i, { scene_id: e.target.value })}>
+            {!scenes.some((scene) => scene.id === s.scene_id) && <option value={s.scene_id}>Missing look · {s.scene_id}</option>}
             {scenes.map((scene) => <option key={scene.id} value={scene.id}>{scene.name}</option>)}
           </select></label>
           <label>Incoming fade<select value={s.fade == null ? "inherit" : "override"} onChange={(e) => step(i, { fade: e.target.value === "inherit" ? null : draft.timing === "beats" ? 1 : 0 })}>
-            <option value="inherit">Inherit scene ({fadeLabel(scenes.find((scene) => scene.id === s.scene_id))})</option>
+            <option value="inherit">Inherit look ({fadeLabel(scenes.find((scene) => scene.id === s.scene_id))})</option>
             <option value="override">Override for this step</option>
           </select></label>
           {s.fade != null && duration(s.fade, (fade) => step(i, { fade }), `Step ${i + 1} incoming fade`, true)}
-          <div>Hold after fade ({draft.timing === "beats" ? "beats" : "seconds"}){duration(s.hold, (hold) => step(i, { hold }), `Step ${i + 1} hold`)}</div>
+          <label>After the fade<select value={s.wait ? "wait" : "hold"} onChange={(e) => step(i, { wait: e.target.value === "wait" })}>
+            <option value="hold">Hold, then continue</option><option value="wait">Wait for NEXT</option>
+          </select></label>
+          {s.wait ? <div className="sequence-wait-note">Waits until you press NEXT</div>
+            : <div>Hold after fade ({draft.timing === "beats" ? "beats" : "seconds"}){duration(s.hold, (hold) => step(i, { hold }), `Step ${i + 1} hold`)}</div>}
           <div className="show-actions">
             <button type="button" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move step ${i + 1} up`}>↑</button>
             <button type="button" disabled={i === draft.steps.length - 1} onClick={() => move(i, 1)} aria-label={`Move step ${i + 1} down`}>↓</button>
@@ -180,9 +184,9 @@ export default function SequenceDialog({ sequence, pad, onClose, onSaved }: Sequ
         </li>)}</ol>
         <button type="button" disabled={!scenes.length} onClick={() => change({
           ...draft, steps: [...draft.steps, { scene_id: scenes[0].id, fade: null, hold: draft.timing === "beats" ? 4 : 1 }],
-        })}>Add scene step</button>
-        <button type="button" onClick={() => setCreatingScene(true)}>Create new scene…</button>
-        {loaded && !scenes.length && <p className="muted">No scenes exist yet. Create one first; your sequence draft is kept.</p>}
+        })}>Add look step</button>
+        <button type="button" onClick={() => setCreatingScene(true)}>Create new look…</button>
+        {loaded && !scenes.length && <p className="muted">No looks exist yet. Create one first; your sequence draft is kept.</p>}
         <details className="sequence-live" open={liveInvalid}>
           <summary>Live controls · {Object.values(draft.live_controls ?? {}).reduce((n, attrs) => n + attrs.length, 0)} selected{liveInvalid ? " · needs attention" : ""}</summary>
         <SequenceLiveControls scopes={editorScopes(fixtures, groups, strips)} value={draft.live_controls ?? {}}

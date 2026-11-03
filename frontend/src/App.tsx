@@ -152,7 +152,7 @@ export default function App() {
         {previewing && <span className="chip preview">PREVIEW — not live</span>}
         {!onController && (<>
         <span className="scene-indicator">
-          Scene: {status?.active_scene ? scenes.find((s) => s.id === status.active_scene)?.name ?? status.active_scene : "—"}
+          Look: {status?.active_scene ? scenes.find((s) => s.id === status.active_scene)?.name ?? status.active_scene : "—"}
           {fading && <span className="fading"> FADING…</span>}
         </span>
         <label className="master">

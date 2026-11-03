@@ -1,8 +1,9 @@
 """Scene recall and capture on top of the live fixture state."""
 
 import logging
-from threading import RLock
-from typing import Literal, Optional, TYPE_CHECKING
+from collections.abc import Callable
+from threading import Lock, RLock
+from typing import Literal, Optional, Protocol, TYPE_CHECKING
 
 from .fixture_service import FixtureController
 from .rings import (
@@ -10,7 +11,7 @@ from .rings import (
     expand_legacy_ring_values,
     ring_segments,
 )
-from .scenes import Scene, SceneContent, SceneStore, resolve_scene
+from .scenes import LookFx, Scene, SceneContent, SceneStore, look_route_references, resolve_scene
 from .tempo import TempoClock
 
 if TYPE_CHECKING:
@@ -18,6 +19,18 @@ if TYPE_CHECKING:
     from .sequence_service import SequenceService
 
 logger = logging.getLogger(__name__)
+
+
+class LookHandler(Protocol):
+    """Applies the FX part of looks; it knows the controller strips (see looks.py)."""
+
+    def capture(self, fixture_ids: set[str]) -> LookFx: ...
+
+    def prepare(self, scene: Scene) -> None: ...
+
+    def apply(self, scene: Scene) -> list[str]: ...
+
+    def start_overlay(self, scene: Scene, prefix: str) -> tuple[list[str], list[str]]: ...
 
 
 class SceneService:
@@ -31,6 +44,11 @@ class SceneService:
         self._preview_scene: Optional[str] = None
         self._positions: Optional["PositionService"] = None
         self.sequences: Optional["SequenceService"] = None
+        self.looks: Optional[LookHandler] = None
+        # Called with the target values of every applied scene snapshot (e.g. fader pickup).
+        self.snapshot_listeners: list[Callable[[dict[str, dict[str, float]]], None]] = []
+        self._look_notice: Optional[str] = None
+        self._notice_lock = Lock()  # leaf lock: also used by sequence steps under their lock
         self._owners: dict[str, dict[str, str]] = {}
         self._preview_owners: Optional[dict[str, dict[str, str]]] = None
         self._globals: dict[str, set[str]] = {}
@@ -41,8 +59,21 @@ class SceneService:
     def set_positions(self, positions: "PositionService") -> None:
         self._positions = positions
         self._store.position_validator = positions.validate_scene_positions
+        self._store.route_validator = self._validate_look_routes
         for scene in self._store.all():
             self._store._check(scene)
+
+    def _validate_look_routes(self, scene: SceneContent) -> None:
+        if self._positions is None:
+            return
+        room = self._positions.rig.room_file()
+        targets, zones = look_route_references(scene)
+        missing = sorted(targets - {t.id for t in room.targets}) + sorted(zones - {z.id for z in room.zones})
+        if missing:
+            raise ValueError(
+                f"Look '{scene.name}': its Move FX route uses missing targets/zones ({', '.join(missing)}). "
+                "Restore them in the room or re-capture the look."
+            )
 
     def _editing_owners(self) -> dict[str, dict[str, str]]:
         return self._preview_owners if self._controller.editing_preview() and self._preview_owners is not None else self._owners
@@ -132,6 +163,10 @@ class SceneService:
     def position_references(self, kind: str, item_id: str) -> list[str]:
         names = []
         for scene in self._referenced_scenes():
+            targets, zones = look_route_references(scene)
+            if item_id in (targets if kind in ("target", "targets") else zones):
+                names.append(scene.name)
+                continue
             for value in scene.positions.values():
                 referenced = value.target_id == item_id if kind in ("target", "targets") else (
                     value.zone_id == item_id or item_id in value.included_zone_ids or item_id in value.excluded_zone_ids
@@ -153,12 +188,16 @@ class SceneService:
         targets = {target.id for target in document.targets}
         zones = {zone.id for zone in document.zones}
         for scene in self._referenced_scenes():
+            route_targets, route_zones = look_route_references(scene)
+            missing = sorted(route_targets - targets) + sorted(route_zones - zones)
+            if missing:
+                raise ValueError(f"'{missing[0]}' is used by a Move FX route in look '{scene.name}'.")
             for value in scene.positions.values():
                 if value.target_id is not None and value.target_id not in targets:
-                    raise ValueError(f"Target '{value.target_id}' is referenced by scene '{scene.name}'.")
+                    raise ValueError(f"Target '{value.target_id}' is referenced by look '{scene.name}'.")
                 for zone in [value.zone_id, *value.included_zone_ids, *value.excluded_zone_ids]:
                     if zone is not None and zone not in zones:
-                        raise ValueError(f"Zone '{zone}' is referenced by scene '{scene.name}'.")
+                        raise ValueError(f"Zone '{zone}' is referenced by look '{scene.name}'.")
         if self.sequences is None or self._positions is None:
             return
         current = self._positions.rig.room_file(live=True)
@@ -226,6 +265,8 @@ class SceneService:
             self._controller.apply(changes, fade)
         if claim:
             self.claim(self.scene_attributes(scene), owner)
+        for listener in self.snapshot_listeners:
+            listener(changes)
 
     @property
     def store(self) -> SceneStore:
@@ -271,8 +312,17 @@ class SceneService:
                 self._active = scene_id
 
     def recall(self, scene_id: str, fade_seconds: Optional[float] = None) -> Scene:
-        """Fade to the scene's values. The stored scene itself is never modified."""
+        """Fade to the scene's values. The stored scene itself is never modified.
+
+        A look (scene with an FX set) also switches strip modes before and starts its FX after
+        the values. Parts that cannot run are reported in look_notice(); the rest still runs.
+        """
         scene = self._store.get(scene_id)
+        looks = self.looks if scene.fx is not None else None
+        # Strip modes switch first, so the new strips' stored set points cannot override the look.
+        # This happens outside the sequence lock (lock order: controller strips before sequences).
+        if looks is not None:
+            looks.prepare(scene)
         beat_fade = fade_seconds is None and scene.fade_timing == "beats"
         fade = (scene.fade_beats * 60 / self._tempo.bpm() if beat_fade else scene.fade_seconds) if fade_seconds is None else fade_seconds
         if self.sequences is not None:
@@ -284,9 +334,26 @@ class SceneService:
             self.apply_snapshot(scene, fade, owner=f"scene:{scene.id}")
         if beat_fade and scene.fade_beats:
             self._controller.time_fades_in_beats(self.scene_attributes(scene), scene.fade_beats, self._tempo.beats)
+        if looks is not None:
+            self.report_look(scene, looks.apply(scene))
+        else:
+            self.report_look(scene, [])
         self._set_active(scene.id)
         logger.info("Scene '%s' recalled (fade %.1f s).", scene.id, fade)
         return scene
+
+    def report_look(self, scene: Scene, blocked: list[str]) -> None:
+        """Remember what the latest look recall or sequence step could not run."""
+        notice = (f"Look '{scene.name}' partly blocked: " + "; ".join(blocked)) if blocked else None
+        with self._notice_lock:
+            self._look_notice = notice
+        if notice:
+            logger.warning("%s", notice)
+
+    def look_notice(self) -> Optional[str]:
+        """What the most recent recall could not run (None = everything ran)."""
+        with self._notice_lock:
+            return self._look_notice
 
     def deactivate(self, fade_seconds: Optional[float] = None) -> None:
         """Fade every dimmable fixture to intensity 0 and clear the active scene.
@@ -311,8 +378,28 @@ class SceneService:
         group_ids: Optional[list[str]] = None, attributes: Optional[list[str]] = None,
         include_haze: bool = False, include_position: bool = False,
         fade_timing: Literal["seconds", "beats"] = "seconds", fade_beats: float = 1.0,
+        include_fx: bool = False,
     ) -> Scene:
         """Store the current values of every enabled fixture (the preview's while preview is on)."""
+        content = self.live_content(
+            name, fade_seconds, fixture_ids, group_ids, attributes, include_haze,
+            include_position, fade_timing, fade_beats, include_fx,
+        )
+        scene = self._store.create(content)
+        logger.info("Scene '%s' captured from live state.", scene.id)
+        return scene
+
+    def live_content(
+        self, name: str, fade_seconds: float, fixture_ids: Optional[list[str]] = None,
+        group_ids: Optional[list[str]] = None, attributes: Optional[list[str]] = None,
+        include_haze: bool = False, include_position: bool = False,
+        fade_timing: Literal["seconds", "beats"] = "seconds", fade_beats: float = 1.0,
+        include_fx: bool = False,
+    ) -> SceneContent:
+        """The current state as an unsaved scene; with include_fx it is a look with the running FX.
+
+        Logical values only: master, blackout, FLASH and strobe holds are render-time and never captured.
+        """
         selected = set(fixture_ids) if fixture_ids is not None else None
         if group_ids is not None:
             if selected is None:
@@ -346,13 +433,15 @@ class SceneService:
             for fixture_id in positions:
                 values[fixture_id].pop("pan", None)
                 values[fixture_id].pop("tilt", None)
-        content = SceneContent(
+        fx = None
+        if include_fx:
+            if self.looks is None:
+                raise ValueError("Capturing FX needs the controller strips; it is not available here.")
+            fx = self.looks.capture(set(values))
+        return SceneContent(
             name=name, fade_seconds=fade_seconds, fade_timing=fade_timing,
-            fade_beats=fade_beats, fixtures=values, positions=positions,
+            fade_beats=fade_beats, fixtures=values, positions=positions, fx=fx,
         )
-        scene = self._store.create(content)
-        logger.info("Scene '%s' captured from live state.", scene.id)
-        return scene
 
     def delete(self, scene_id: str) -> None:
         self._store.delete(scene_id)

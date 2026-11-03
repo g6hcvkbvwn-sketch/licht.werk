@@ -76,9 +76,25 @@ class EffectParams(BaseModel):
     palette: list[str] = Field(default_factory=lambda: ["#0000ff", "#ff00ff"])
     transition: Literal["step", "smooth"] = "smooth"
     target_ids: list[str] = Field(default_factory=list)
+    # Ordered named zones. A route uses either targets or zones, never both. One stop with
+    # pattern "current" pins the generator to that single point; otherwise stops form a tour.
+    zone_ids: list[str] = Field(default_factory=list)
     travel: float = Field(default=4.0, gt=0, le=120.0, allow_inf_nan=False)
     hold: float = Field(default=4.0, gt=0, le=120.0, allow_inf_nan=False)
     pattern: Literal["current", "none", "circle", "figure8"] = "current"
+
+    @property
+    def stops(self) -> list[str]:
+        return self.target_ids or self.zone_ids
+
+    @property
+    def single_point(self) -> bool:
+        return len(self.stops) == 1 and self.pattern == "current"
+
+    @property
+    def touring(self) -> bool:
+        """Travel/Hold timing applies (knob 1 = Travel)."""
+        return bool(self.stops) and not self.single_point
 
     @model_validator(mode="after")
     def _validate_lists(self) -> "EffectParams":
@@ -86,6 +102,10 @@ class EffectParams(BaseModel):
             raise ValueError("Fixture order contains a duplicate id.")
         if len(set(self.target_ids)) != len(self.target_ids):
             raise ValueError("Target list contains a duplicate id.")
+        if len(set(self.zone_ids)) != len(self.zone_ids):
+            raise ValueError("Zone list contains a duplicate id.")
+        if self.target_ids and self.zone_ids:
+            raise ValueError("A Move route uses either named targets or named zones, not both.")
         if not 2 <= len(self.palette) <= 8:
             raise ValueError("A fixed palette must contain 2 to 8 RGB colours.")
         if any(not isinstance(colour, str) or not _HEX_RGB.fullmatch(colour) for colour in self.palette):
@@ -106,6 +126,72 @@ class FxDefinition(BaseModel):
     name: str = Field(min_length=1)
     kind: EffectType = Field(strict=False)
     params: EffectParams
+
+
+class ComboDefinition(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+
+    name: str = Field(min_length=1)
+    effects: list[FxDefinition] = Field(min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def unique_families(self) -> "ComboDefinition":
+        pages = [family(effect.kind) for effect in self.effects]
+        if len(set(pages)) != len(pages):
+            raise ValueError("A Combo can include only one effect per family.")
+        return self
+
+
+def combo_presets() -> tuple[ComboDefinition, ...]:
+    def look(name: str, dimmer: int, colour: int, move: int | None) -> ComboDefinition:
+        effects = [
+            family_presets(EffectType.CHASE)[dimmer],
+            family_presets(EffectType.RAINBOW)[colour],
+        ]
+        if move is not None:
+            effects.append(family_presets(EffectType.CIRCLE)[move])
+        settings = {
+            "Slow Atmosphere": (
+                {"beats": 16.0, "shape": "sine", "size": 0.35},
+                {"beats": 32.0, "palette": ["#0000ff", "#8000ff"], "transition": "smooth"},
+                {"beats": 32.0, "size": 0.2},
+            ),
+            "Colour Chase": (
+                {"beats": 4.0, "shape": "one_by_one"},
+                {"beats": 4.0, "palette": ["#00ffff", "#ff00ff"], "transition": "step"},
+                {},
+            ),
+            "Wide Sweep": (
+                {"beats": 8.0, "shape": "sine", "size": 0.25},
+                {"beats": 16.0, "palette": ["#0000ff", "#00ffff", "#ff00ff"], "transition": "smooth"},
+                {"beats": 16.0, "size": 0.8},
+            ),
+            "Pulse & Travel": (
+                {"beats": 1.0, "shape": "sine", "size": 0.8},
+                {"beats": 8.0, "palette": ["#0000ff", "#ff00ff"], "transition": "smooth"},
+                {"beats": 8.0, "size": 0.6},
+            ),
+            "Static Groove": (
+                {"beats": 2.0, "shape": "triangle", "size": 0.5},
+                {"beats": 4.0, "palette": ["#8000ff", "#00ffff"], "transition": "step"},
+                {},
+            ),
+        }[name]
+        for index, effect in enumerate(effects):
+            params = EffectParams.model_validate({
+                **effect.params.model_dump(), **settings[index],
+                **({"colour_mode": "palette"} if index == 1 else {}),
+            })
+            effects[index] = FxDefinition(name=effect.name, kind=effect.kind, params=params)
+        return ComboDefinition(name=name, effects=effects)
+
+    return (
+        look("Slow Atmosphere", 4, 0, 0),
+        look("Colour Chase", 1, 2, None),
+        look("Wide Sweep", 2, 1, 4),
+        look("Pulse & Travel", 0, 3, 1),
+        look("Static Groove", 0, 4, None),
+    )
 
 
 def _preset(name: str, beats: float, size: float, spread: float, softness: float) -> EffectPreset:

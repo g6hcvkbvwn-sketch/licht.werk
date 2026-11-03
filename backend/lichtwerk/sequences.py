@@ -16,6 +16,8 @@ class SequenceStep(BaseModel):
     scene_id: str = Field(pattern=ID_PATTERN)
     fade: Optional[float] = Field(default=None, ge=0, le=MAX_FADE_SECONDS)
     hold: float = Field(default=1.0, ge=0, le=MAX_FADE_SECONDS)
+    # After its fade the step waits for NEXT instead of holding (hold is then ignored).
+    wait: bool = False
 
 
 class SequenceContent(BaseModel):
@@ -32,7 +34,7 @@ class SequenceContent(BaseModel):
             for step in self.steps:
                 if step.fade is not None and step.fade != 0 and step.fade not in BEAT_VALUES:
                     raise ValueError("Beat fades must be a cut (0) or .5, 1, 2, 4, 8, 16, 32.")
-                if step.hold not in BEAT_VALUES:
+                if not step.wait and step.hold not in BEAT_VALUES:
                     raise ValueError("Beat holds must be .5, 1, 2, 4, 8, 16, 32.")
         return self
 
@@ -91,7 +93,7 @@ class SequenceStore:
             try:
                 self._scenes.get(step.scene_id)
             except KeyError as error:
-                raise ValueError(f"Sequence references missing scene '{step.scene_id}'.") from error
+                raise ValueError(f"Sequence references missing look '{step.scene_id}'.") from error
 
     def create(self, content: SequenceContent) -> Sequence:
         with self._lock:

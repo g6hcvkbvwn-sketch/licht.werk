@@ -35,14 +35,14 @@ TOLERANCE = 1e-6
 
 
 class Zone(BaseModel):
-    """`include`: a head's beam spot is kept inside. `exclude`: the beam must never enter."""
+    """Named geometry; permissions belong to heads/strips, not to the zone definition."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
     id: str = Field(pattern=ID_PATTERN)
     name: str = Field(min_length=1, max_length=80)
     surface: Surface
-    mode: Literal["include", "exclude"] = "exclude"
+    mode: Literal["include", "exclude"] = "exclude"  # Legacy file metadata, not a permission.
     corner: dict[str, float]
     length: float = Field(gt=0, allow_inf_nan=False)
     width: float = Field(gt=0, allow_inf_nan=False)

@@ -164,7 +164,7 @@ Tests use only the simulated adapter and do not require OLA, the Botex, Resolume
 Monitor label and brightness regression tests (from the repository root):
 
 ```sh
-cd frontend && node --test tests/monitorDisplay.test.mjs
+cd frontend && node --test tests/monitorDisplay.test.mjs tests/tourBuilder.test.mjs
 ```
 
 ## Logging
@@ -223,12 +223,12 @@ The **Controller** page shows the on-screen APC40 MKII (the Xone:K2 tab is on ho
 **Preview mode:** press **PREVIEW** (top bar, the on-screen button, K2 LAYER or APC40 SESSION RECORD). Changes now only go into the preview; the page gets an orange frame. Press **GO** to send everything at once and return to live. Master, blackout, flash and strobe-hold always act live (marked with a red LIVE badge). The **Room map** in the side panel shows each fixture as a dot (left half = live, right half = preview); use **EDIT POSITIONS** to place the fixtures.
 
 **RFC controller workflow (29 October 2026):**
-- **COLOR** selects colour pads. **SCENE LAUNCH 1/2/3** selects Dimmer/Colour/Move; buttons 4/5 are unused. Each page has five presets per strip. Press a pad to start/stop it; TRACK SELECT chooses the FX editing strip. **STOP FX / STOP ALL CLIPS** stops that strip's selected beam/ring FX context, not its scene sequence. One effect per family/component runs on a fixture; starting another replaces the conflicting effect as a whole.
+- **COLOR** selects colour pads; the selected fixture-colour pad blinks on both hardware and screen. **SCENE LAUNCH 1/2/3/4** selects Dimmer/Colour/Move/Combo; button 5 is unused. Each page has five presets per strip. Press a pad to start/stop it; TRACK SELECT chooses the FX editing strip. **STOP FX / STOP ALL CLIPS** stops that strip's selected beam/ring FX context, not its scene sequence. One effect per family/component runs on a fixture; starting another replaces the conflicting effect as a whole.
 - Track FX indication blinks while FX run, including outside the FX page. Faster blinking indicates the FX editing strip.
-- The three left device-knob columns form a two-row, three-column block: **1 Rate, 2 Depth/Size, 3 Shape** above **5 Spread, 6 Softness, 7 Maximum**, where applicable. On screen, labels sit underneath each knob; Shape shows its waveform and name, Maximum its percentage, and Rate the beats or seconds per cycle. Fixture controls still use knobs 1, 2, 5, 6. Default tempo is 128 BPM; TAP adjusts it and METRONOME displays the beat (the physical TAP button has no LED).
+- The three left device-knob columns form a two-row, three-column block: **1 Rate, 2 Depth/Size, 3 Shape** above **5 Spread, 6 Softness, 7 Maximum**, where applicable. On screen, labels sit underneath each knob; Shape shows its waveform and name, Maximum its percentage, and Rate the beats or seconds per cycle. Fixture controls still use knobs 1, 2, 5, 6. Default tempo is 128 BPM; TAP adjusts it and METRONOME toggles quantize (its LED flashes on the beat while quantize is on; the physical TAP button has no LED). The on-screen BEAT indicator always shows the beat.
 - **Fast Colour FX picker:** launch a Colour FX, then press that strip's COLOR. Click colour pads to add/remove palette entries (2–8); selected colours blink and show their order. Both Colour generators switch to fixed-palette mode when edited. Changes affect only the running FX, including in preview; close COLOR, return to the Colour FX editor, and use **Store current FX** to save them. **SHIFT+COLOR** opens ordinary fixture-colour control. Ring selection edits ring FX independently. If the FX stops, relaunch it rather than continuing to edit a stopped palette.
 - Live/Preview monitor labels use **W, B1/B2, M1/M2, H**; full names remain in tooltips and on controller tracks. Dim blue at 5–10% is lifted visually without changing actual output, hue or percentage readouts.
-- **SHIFT + TRACK SELECT** on a head/group opens target/zone pads in AIM mode. Keyboard Shift also works. First 24 pads are targets; last 16 are zones. UP/AIM selects a destination without changing permissions. DOWN/PERMISSIONS cycles each zone: not included -> included -> explicitly excluded -> not included, without moving heads. SHIFT + an existing pad edits it. Several zones can be included together.
+- **SHIFT + TRACK SELECT** on a head/group opens target/zone pads in AIM mode. Keyboard Shift also works. First 24 pads are targets; last 16 are zones. UP/AIM selects a destination without changing permissions. DOWN/PERMISSIONS toggles each zone included/excluded without moving heads. SHIFT + an existing pad edits it. Several zones can be included together.
 - **Store current position** in the target dialog fills estimated x/y/z from the calibrated head's commanded beam intersection with the first room wall, floor or ceiling. Choose a head when operating the group, wait for real movement to settle, review the coordinates and press Save. This cannot locate an object inside the room; enter measured coordinates for those targets. Missing geometry/calibration produces an error, never guessed coordinates.
 - **Edit/delete target/zone** in the same controller menu edits names/geometry without changing IDs. Delete asks for confirmation and removes the item from all assignments. Finish preview before capturing or changing definitions.
 - Empty target/zone pads on the APC40 or display open the matching Add dialog (keep the browser's controller page open for hardware requests). During Move FX, every included zone pad is fully illuminated; normal indication returns when Move FX stops. This is pad feedback, not simultaneous beam coverage of every area.
@@ -254,18 +254,77 @@ phase-offset Mirror presets.
 - More options expose fixture order, Forward/Reverse, Odd/Even/Alternating,
   Spread, Seconds timing and movement reflection. A reflected pattern is not the
   same as a half-cycle phase offset. Spread needs multiple participants.
-- In Move, choose **Target Tour**, add/reorder named targets and set travel/hold
-  durations in the selected units. Pattern None holds each exact target; Circle
-  or Figure 8 runs only during holds, not while travelling. Tour and pattern are
-  saved as one Move preset, so colour/dimmer FX or a scene sequence can run beside it.
-  During a tour device knob 1 is labelled Travel and changes travel duration;
-  pattern cycle timing remains the editor's separate Rate setting.
-  A pattern needs permitted areas; selecting a target never permits its travel
-  path. Forbidden beam output remains dark, even under FLASH.
+- In Move, choose a destination with the three large buttons. Tiles sit on the
+  left and the schematic top view on the right (stacked on narrow screens):
+  - **Current target / zone** runs the pattern at one point. **Use current aim**
+    (default) keeps the strip's current aim target, or tours its included areas;
+    the tile lists, per head, what will happen at launch. Change it with
+    Aim / Permissions (SHIFT + the head strip's TRACK SELECT). Or tap one target
+    or one zone (tap again to go back to current aim): the pattern then runs
+    around that target or inside that zone, starting there directly. Rate and
+    Size control the pattern; Size 0 holds still.
+  - **Named zone tour** works like the target tour below, but visits zones.
+    Still holds at the zone centre; Circle / Figure eight stays inside the zone.
+    Zones that the head does not include show **Not included · tap to include**:
+    after a confirmation, the zone is included right away (a permission change
+    only; nothing moves). Excluded zones are never included automatically.
+  - **Named target tour** shows every named target as a tile. Tap tiles in the
+    order the beams should visit them; a number appears on each picked tile, and
+    tapping again removes it. Reorder or remove stops in **Route**, or use
+    **Clear route**. Tiles show **Pattern OK**, **Still hold only** (the target
+    is outside the head's included areas), **Unreachable** or **Not measured**.
+    A summary reads e.g. "Visit 3 targets · travel 4 beats · hold 8 beats each
+    (circle) · then repeat".
+  - The **Schematic top view** draws the route from measured target positions.
+    It is oriented like the Live/Preview room monitors (DJ booth at the bottom)
+    and labels every zone and target. A zone's room-level type (include/exclude)
+    is only a label; what a head may enter is set per strip in Permissions.
+    Targets on the same floor spot sit as separate markers; the route legend
+    names their heights. It is not the real beam path: beams travel dark along
+    each head's pan/tilt path.
+  - Set **Travel**, **Hold** and **During hold** (Still / Circle / Figure eight)
+    in the selected Timing units. **Pattern rate** and **Pattern size** appear
+    only for Circle / Figure eight. Patterns run only during holds, never while
+    travelling. If a picked target allows only a still hold, a warning says how
+    to fix it and **Save & apply** stays disabled until you do.
+  - Picking targets only edits the draft; nothing moves until Save & apply or
+    Start. Tour and pattern are saved as one Move preset, so colour/dimmer FX or
+    a scene sequence can run beside it. During a tour device knob 1 is labelled
+    Travel and changes travel duration. A pattern needs permitted areas;
+    selecting a target never permits its travel path. Forbidden beam output
+    remains dark, even under FLASH.
 - Stop reveals the latest underlying base state, not values captured at FX launch.
   For ordinary movement launch this is the deliberately prepared base aim.
 - Fast cycles can have too few output frames to reproduce reliably; heed the
   timing warning and use the native strobe controls for strobing.
+
+### Combo FX
+
+- Open **SCENE LAUNCH 4 / Combo**. Tap one of the five pads in a strip's column
+  to launch its saved bundle. Tap its running pad again to stop the remaining
+  bundled components. Launch replaces all existing FX owned by that strip in the
+  selected beam/ring context, including families disabled in the new Combo.
+- **SHIFT + Combo pad** opens its editor without launching. Alternatively select
+  the strip with TRACK SELECT and click **Edit Combo presets**. One window has
+  Dimmer, Colour and Move tabs with the full existing controls and per-family
+  enable switches. Incompatible families are omitted; rings have no Move.
+- The five factory looks are **Slow Atmosphere**, **Colour Chase**, **Wide Sweep**,
+  **Pulse & Travel**, and **Static Groove**. Movement uses the existing aim/included
+  areas, never guessed targets; choose a named Target Tour in the Move tab if wanted.
+  All enabled components must pass validation before anything is replaced.
+- Live tuning uses the ordinary family pages and six device knobs; the Combo page
+  also lets you select the knob family on screen. COLOR reuses the Colour FX palette
+  picker. Knob and palette edits stay in the bundle and do not restart its clock.
+- Launching a standalone family preset replaces and detaches only that family.
+  The Combo is marked **modified**. Stop Combo leaves that standalone replacement
+  running; **STOP FX** still stops everything in the selected strip/component context.
+- **Save for next launch** does not alter runtime output. **Save & apply now**
+  relaunches the complete bundle together. **Store current Combo** saves live tuning
+  of its remaining components only, excluding detached standalone FX. Reset affects
+  the saved slot only. Definitions are independent copies, not links to family slots.
+- Combo slots share the atomic `config/fx-presets.json` store with ordinary slots.
+  Live/Preview and beam/ring remain independent. Group/single switching suspends
+  outgoing FX before resuming remembered incoming FX. Startup never launches a Combo.
 
 ### Fusion Orbit ring controls
 
@@ -299,11 +358,25 @@ and physical section order with the club checklist before relying on hardware.
 
 ### Scene/sequence authoring and live operation
 
-- Empty scene/sequence pads open authoring; SHIFT + an existing pad edits its saved
+- Empty look/sequence pads open authoring; SHIFT + an existing pad edits its saved
   definition without recalling it. Detailed authoring requires the browser open.
-  Scene capture saves selected logical base values, not master/blackout/FLASH/FX;
-  including haze pump/fan is an explicit choice.
-- LEFT selects Scenes, RIGHT selects Sequences. Both pages have independent 40-pad
+  In the UI scenes are called **looks** (the file stays `config/scenes.json`). Capture
+  never stores master/blackout/FLASH; including haze pump/fan is an explicit choice.
+- **Looks:** every capture stores the live values plus the running FX and the group/single
+  modes of the involved strips (also when no FX runs). **Capture live** takes everything of
+  the ticked fixtures (all if none ticked); **Update selected controls** refreshes only the
+  controls already in the look. SHIFT + an empty look pad opens the dialog and captures
+  the live look at once. Pads with FX/modes show an **FX** badge. Recalling a look switches the
+  captured strip modes, applies the values, stops the other FX of its strips and starts
+  its FX; strips not in the look are untouched. Parts that are not allowed (e.g. Move FX
+  outside the included zones) are skipped and reported in a banner, the rest is applied.
+  "Values only (leave FX and modes alone)" removes that part; older scenes behave the
+  same way.
+- **Soft takeover:** after a scene/look/sequence step changes a strip's intensity, the
+  hardware fader shows **PICKUP** and an amber marker at the real level. It only takes
+  effect once moved across that level. On-screen faders take over at once; the master
+  fader is never detached.
+- LEFT selects Looks, RIGHT selects Sequences. Both pages have independent 40-pad
   assignments. Repeated static scene presses recall; running sequence presses pause/resume.
   PLAY pauses/resumes, SHIFT + PLAY restarts, RECORD stops sequence playback.
   STOP ALL CLIPS keeps its selected-strip FX-stop behavior.
@@ -311,6 +384,46 @@ and physical section order with the club checklist before relying on hardware.
   that fade. Choose seconds or beats for the sequence, one-shot or loop. Stop freezes
   current values; it does not switch lights or haze off. Unrelated static scenes can
   coexist; recalling overlapping scene attributes stops the sequence.
+- **Wait for NEXT:** per step, "After the fade" is either *Hold, then continue* or
+  *Wait for NEXT*. **NEXT = SCENE LAUNCH 5** (also on screen): it flashes white on the
+  beat while a step waits and is dim while a sequence runs. NEXT also skips a timed step, starts the
+  next step from the current level during a fade, ends a one-shot sequence on its last
+  step (a loop wraps) and resumes a paused sequence. A look used as a step also switches
+  strip modes and starts its FX; blocked parts are reported and the sequence continues.
+- **Accent pads:** in the look dialog (SHIFT + pad) set *Pad action* to *Accent while
+  held* or *Accent for N beats*. The pad then plays the complete look on top of the
+  output — values, moving-head positions and the look's FX (pad white, badge HIT) — and
+  afterwards everything returns exactly, running FX included. Move FX follow the current
+  zone permissions; blocked parts are reported.
+- **Quantize:** METRONOME (or *QUANT* on screen, or *Quantize* in the status strip) switches
+  between *off* and *next beat*. While on, look pads, accent pads, sequence pads and NEXT
+  wait for the next beat and blink fast meanwhile; the status strip shows "Queued: …".
+  A press just after a beat counts as on that beat and fires at once. A later look press
+  replaces a queued one. A while-held accent let go before its beat still plays for one beat.
+  Turning quantize off fires anything queued at once. The setting starts off at every launch.
+- **LIVE MODIFIERS** in the status strip: FX speed **¼× / ½× / 1× / 2× / 4×** changes every FX
+  family (including Combo, rings and accents), without changing BPM, sequence/NEXT timing
+  or accent duration. **Sequence speed** offers the same multipliers but changes only
+  timed holds, in both beat- and second-based sequences: a 4-beat hold lasts 16 beats
+  at ¼×, or 1 beat at 4×. Fades, WAIT FOR NEXT, BPM and quantize are unchanged.
+  Changing speed preserves the current hold's progress, including in paused/preview
+  playback. Holds may run below half a beat. The beat countdown uses whole beats when
+  the current effective fade/hold timings are integers, otherwise half-beat ticks
+  (1.5, 1.0, 0.5), rounded up; seconds retain one decimal.
+  For tint, pick a colour and press **Apply tint**: all colour-capable
+  lighting fixtures are affected by default. Under **Tint: all lighting / Tint exclusions**,
+  check fixtures/groups to exclude (for example Booth Spots). Excluding a group excludes
+  its fixtures in both group and single mode; excluding one fixture also protects it
+  when its group is active. Haze is always unaffected. Tint changes output colour while keeping
+  colour brightness and dimmer modulation, including RGB rings. **Tint off** restores
+  the current underlying colours; **Reset modifiers** also restores both speeds to 1×, retaining
+  tint exclusions. Exclusions affect tint only; FX speed remains global. These controls
+  are immediate and always live, also during preview.
+  They remain across looks, sequence steps and browser reloads; restarting the backend
+  starts neutral. They never alter saved looks/FX. No APC hardware shortcuts were added.
+- The **status strip** above every page shows the running sequence, step n/N, a
+  beat-flashing **WAITING FOR NEXT** (or the time/beats to the next step), the next look, a NEXT
+  button, the quantize switch with queued actions and a "Blocked: …" line.
 - Configure **Live controls** inside a sequence to preserve selected fixture attributes
   (for example moving-head colour) through all its steps. They start with existing values
   and remain adjustable using normal controls. Other manual changes work too, but the
@@ -338,15 +451,28 @@ and physical section order with the club checklist before relying on hardware.
   commanded haze, not measured room fog; reduced-motion settings pause bubble travel.
 - The target/zone menu always opens in **Aim** mode: zone presses deliberately aim
   without changing permissions. UP selects Aim; DOWN selects **Permissions**, where zone
-  presses cycle not included -> included -> explicitly excluded -> not included without
-  movement. Dim neutral/cyan/red pads distinguish these permission states. SHIFT + pad
+  presses toggle included/excluded without movement. Cyan/red pads distinguish the
+  two permission states. SHIFT + pad
   edits instead of excluding. Permission changes may darken output or change an active
   Move FX tour; they never issue a separate zone-centre recall.
+- **Picking a Move route with pads:** while a Move FX runs on the strip, Aim-mode pads
+  edit that FX's route instead of the base aim. Press one target or zone = the pattern
+  runs there; press more = a tour in press order (keeps the FX's Travel/Hold/pattern);
+  press a picked pad again to remove it; none picked = back to the current aim. A zone
+  pad while targets are picked (or the reverse) starts a new route of that kind. Picked
+  pads blink and show their order number on screen. Zones must be included first
+  (DOWN/Permissions). Like the knobs, this is a live tweak: **Store current FX** keeps
+  it in the preset. Without a running Move FX, Aim pads behave as before. In Permissions
+  mode, bright zone pads show the included zones.
+- New zones start **excluded** on every head/strip. Older "not included" permissions
+  now mean excluded too. Exclusions win on overlaps: if an included area stays dark,
+  check whether another excluded zone overlaps it. Zone definitions no longer offer a
+  misleading global Include/Exclude setting; choose permissions per strip instead.
 
 For concrete club checks and cleanup steps, use [testing.rfc](testing.rfc).
 - Undefined areas are dark. Static selected targets are exceptions, but not their travel paths or movement FX around forbidden targets. Group and individual strips retain independent settings. Missing calibration/geometry keeps heads dark; use the explicit setup override only for supervised calibration, then disable it.
 - With multiple included zones and no selected static target, current-aim Move FX cycle through all included zones: a complete pattern in each rectangle, then a short dark move to the next. Size scales the pattern inside each zone; Rate is beats or seconds per pattern and transfer takes another quarter-pattern duration. The last illuminated zone pad is only the base aim, not a restriction on the tour. Named Target Tours instead use their configured Travel/Hold durations. Stopping FX restores the current underlying base aim. Preview uses its staged zone set until Go.
-- The right pane puts PREVIEW/GO and the map above tempo. Beam triangles are illustrative top-view projections of commanded geometry, not physical measurements. Fixture/group names can be edited without changing IDs.
+- The wider right pane puts PREVIEW/GO and the map above two tempo rows: BEAT/TAP/QUANTIZE, then Tempo/BPM. Beam triangles are illustrative top-view projections of commanded geometry, not physical measurements. Fixture/group names can be edited without changing IDs.
 
 The Xone:K2 tab shows the Xone:K2 as it is assigned: column titles (Master, LED bar 1, Moving heads, DJ spots), what every knob, button and fader does, live values and the button LED colours. You can operate everything with the mouse: drag knobs and faders up/down (or scroll), hold buttons. The on-screen controller and the real K2 do exactly the same thing. **ASSIGN CONTROLS** → tap a control → choose action and fixtures/scene → Save. The MIDI channel used by the page is `midi.channel` in `config/app.json` (default 15). The full first assignment is listed in `project.md` (Milestone 7 section).
 

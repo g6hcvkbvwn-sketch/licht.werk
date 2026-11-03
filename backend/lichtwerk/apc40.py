@@ -106,6 +106,12 @@ SCENE_PAD_COLOURS: dict[str, int] = {
     "cyan": 37, "blue": 45, "purple": 49, "magenta": 53, "pink": 57,
 }
 DEFAULT_SCENE_PAD_COLOUR = "white"
+# SCENE LAUNCH 5 = NEXT: white while a sequence step waits (blinking), dark grey while one runs.
+NEXT_COLOURS = (3, 1)
+NEXT_SCENE_LAUNCH_INDEX = 4
+ACCENT_ACTIVE_COLOUR = 3
+# Part of each beat the beat LEDs (METRONOME, waiting NEXT) are lit; the screen uses the same.
+BEAT_FLASH = 0.25  # white while an accent pad is playing
 
 # Effect types on SCENE LAUNCH 1-5 and the effects page: (bright, dim) palette velocities.
 EFFECT_COLOURS: dict[str, tuple[int, int]] = {
@@ -114,6 +120,7 @@ EFFECT_COLOURS: dict[str, tuple[int, int]] = {
     "two_colour": (37, 38),  # cyan
     "circle": (21, 22),  # green
     "figure8": (45, 46),  # blue
+    "combo": (61, 62),
 }
 
 # Colour pads (a channel is selected): 8 hue columns x 5 rows from saturated (top) to pastel.

@@ -20,7 +20,9 @@ import PositionDialog from "./PositionDialog";
 import SceneDialog from "./SceneDialog";
 import SequenceDialog from "./SequenceDialog";
 import FxDialog from "./FxDialog";
-import { isFxPage, type FxPage, type FxComponent } from "./fxApi";
+import ComboDialog from "./ComboDialog";
+import { useBeatPulse } from "./beat";
+import { FX_FAMILIES, isFxPage, selectComboKnobs, type FxPage, type FxComponent } from "./fxApi";
 
 type Event = { kind: "note" | "cc"; channel: number; number: number; value: number };
 
@@ -216,16 +218,15 @@ export default function Apc40View({ scenes }: Props) {
   const [managingPosition, setManagingPosition] = useState(false);
   const [newPositionKind, setNewPositionKind] = useState<"target" | "zone">("target");
   const [positionItem, setPositionItem] = useState<string | null>(null);
-  const [fxDialog, setFxDialog] = useState<{ track: number; page: FxPage; stripName: string; component: FxComponent; initialSlot?: number } | null>(null);
+  const [fxDialog, setFxDialog] = useState<{ track: number; page: FxPage | "combo"; stripName: string; component: FxComponent; initialSlot?: number } | null>(null);
   // null until the first state arrives: requests that predate this mount must not reopen dialogs.
   const lastDialogRequest = useRef<number | null>(null);
   const lastShowRequest = useRef<number | null>(null);
   const lastFxRequest = useRef<number | null>(null);
   const [showDialog, setShowDialog] = useState<{
-    kind: "scene" | "sequence"; pad: number; scene?: Scene; sequence?: Sequence;
+    kind: "scene" | "sequence"; pad: number; scene?: Scene; sequence?: Sequence; captureLive?: boolean;
   } | null>(null);
-  const [beatOn, setBeatOn] = useState(false);
-  const tempoAnchor = useRef({ phase: 0, at: performance.now(), bpm: 128 });
+  const beatOn = useBeatPulse();
   const sender = useRef(
     new Apc40Sender(setState, (e) => {
       if (!(e instanceof ConnectionError)) setError(e instanceof Error ? e.message : String(e));
@@ -254,19 +255,6 @@ export default function Apc40View({ scenes }: Props) {
   }, [sender]);
 
   useEffect(() => {
-    if (state?.beat_phase !== null && state?.beat_phase !== undefined && state.bpm !== null)
-      tempoAnchor.current = { phase: state.beat_phase, at: performance.now(), bpm: state.bpm };
-  }, [state]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      const { phase, at, bpm } = tempoAnchor.current;
-      setBeatOn((phase + ((performance.now() - at) / 60000) * bpm) % 1 < 0.2);
-    }, 25);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     if (!state) return;
     if (lastDialogRequest.current === null || state.position_dialog_id === 0) {
       lastDialogRequest.current = state.position_dialog_id;
@@ -290,7 +278,8 @@ export default function Apc40View({ scenes }: Props) {
       lastFxRequest.current = request.id;
       return;
     }
-    if (request.id === lastFxRequest.current || request.track === null || !request.page || !isFxPage(request.page)) return;
+    if (request.id === lastFxRequest.current || request.track === null || !request.page
+      || (!isFxPage(request.page) && request.page !== "combo")) return;
     lastFxRequest.current = request.id;
     const track = request.track, page = request.page;
     setFxDialog({
@@ -310,13 +299,13 @@ export default function Apc40View({ scenes }: Props) {
     lastShowRequest.current = request.id;
     const kind = request.kind;
     if (!request.item) {
-      setShowDialog({ kind, pad: request.pad });
+      setShowDialog({ kind, pad: request.pad, captureLive: !!request.capture_live });
       return;
     }
     if (kind === "scene") {
       void getScenes().then((items) => {
         const scene = items.find((item) => item.id === request.item);
-        if (!scene) throw new Error("This scene no longer exists. Unassign its pad or choose another scene.");
+        if (!scene) throw new Error("This look no longer exists. Unassign its pad or choose another look.");
         setShowDialog({ kind, pad: request.pad, scene });
       }).catch((e: Error) => setError(e.message));
     } else {
@@ -393,11 +382,14 @@ export default function Apc40View({ scenes }: Props) {
       {stale && <strong className="stale-note"> · backend not responding, values may be stale</strong>}
     </div>
     <div className={stale ? "apc stale" : "apc"}>
-      {showDialog?.kind === "scene" && <SceneDialog scene={showDialog.scene} pad={showDialog.pad}
+      {showDialog?.kind === "scene" && <SceneDialog scene={showDialog.scene} pad={showDialog.pad} captureLive={showDialog.captureLive}
         onClose={() => setShowDialog(null)} onSaved={() => { void getApc40().then(setState); }} />}
       {showDialog?.kind === "sequence" && <SequenceDialog sequence={showDialog.sequence} pad={showDialog.pad}
         onClose={() => setShowDialog(null)} onSaved={() => { void getApc40().then(setState); }} />}
-      {fxDialog && <FxDialog {...fxDialog} preview={state.preview}
+      {fxDialog?.page === "combo" && <ComboDialog {...fxDialog} preview={state.preview}
+        stripActive={state.strips.some((strip) => strip.track === fxDialog.track && strip.active)}
+        onClose={() => setFxDialog(null)} />}
+      {fxDialog && fxDialog.page !== "combo" && <FxDialog {...fxDialog} page={fxDialog.page} preview={state.preview}
         stripActive={state.strips.some((strip) => strip.track === fxDialog.track && strip.active)}
         onClose={() => setFxDialog(null)} />}
       <div className="apc-main">
@@ -426,6 +418,18 @@ export default function Apc40View({ scenes }: Props) {
               onPress={(v) => sender.note(1, APC40.sceneLaunchFirst + t.index - 1, v)}
             />
           ))}
+          <button
+            type="button"
+            disabled={!state.next_available}
+            className={["apc-launch", "apc-next", state.next_queued ? "apc-queued" : "",
+              state.next_waiting && beatOn && !state.next_queued ? "selected" : ""].join(" ")}
+            style={{ gridRow: 5 }}
+            title="SCENE LAUNCH 5 = NEXT: go to the next sequence step now (flashes on the beat while a step waits; also skips a timed step)"
+            onPointerDown={() => sender.note(1, APC40.sceneLaunchFirst + 4, 127)}
+            onPointerUp={() => sender.note(1, APC40.sceneLaunchFirst + 4, 0)}
+          >
+            NEXT
+          </button>
           {state.pads.map((pad) => (
             <PadButton
               key={pad.pad}
@@ -534,8 +538,9 @@ export default function Apc40View({ scenes }: Props) {
               {...noSelect}
               className={standby(s)}
               value={s.intensity}
+              ghost={s.pickup ? s.level : null}
               label={s.available ? s.hazer ? "Pump" : "Intensity" : ""}
-              sublabel=""
+              sublabel={s.pickup ? "PICKUP" : ""}
               onValue={(v) => sender.absolute(s.track, APC40.trackFader, v)}
             />
           ))}
@@ -573,6 +578,8 @@ export default function Apc40View({ scenes }: Props) {
           <TempoPanel
             bpm={state.bpm}
             beatOn={beatOn}
+            quantize={!!state.quantize}
+            onQuantize={(v) => sender.note(1, APC40.metronome, v)}
             onTap={(v) => sender.note(1, APC40.tapTempo, v)}
             onSteps={(steps) => sender.relative(APC40.tempo, steps)}
             onBpm={(bpm) =>
@@ -582,6 +589,24 @@ export default function Apc40View({ scenes }: Props) {
         )}
 
         <div className="apc-context" aria-label={`Context: ${contextText}`}>{contextText}</div>
+        {state.combo_status && <p className="apc-palette-help">Combo: {state.combo_status}</p>}
+        {state.combo_open && <div className="apc-show-pages" aria-label="Combo device knob family">
+          {(Object.keys(FX_FAMILIES) as FxPage[]).filter((page) => state.combo_knob_families.includes(page)).map((page) =>
+            <button key={page} disabled={!fxStrip} aria-pressed={state.combo_knob_family === page}
+              className={state.combo_knob_family === page ? "active" : ""}
+              onClick={() => {
+                if (!fxStrip) return;
+                void selectComboKnobs(fxStrip.track, page).then(
+                  () => getApc40().then(setState),
+                ).catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+              }}>{FX_FAMILIES[page].name} knobs</button>,
+          )}
+          <button disabled={!fxStrip} onClick={() => {
+            if (!fxStrip) return;
+            setFxDialog({ track: fxStrip.track, page: "combo", stripName: fxStrip.label,
+              component: fxStrip.ring_selected ? "ring" : "beam" });
+          }}>Edit Combo presets</button>
+        </div>}
         {state.fx_palette && <div className="apc-palette-help">
           <div className="apc-palette-swatches">{state.colour_fx_palette.map((colour, index) =>
             <span key={`${index}:${colour}`} style={{ backgroundColor: colour }} title={`${index + 1}: ${colour}`}>{index + 1}</span>
@@ -607,15 +632,15 @@ export default function Apc40View({ scenes }: Props) {
           ))}
         </div>
         <div className="apc-show-pages">
-          <HwButton label="SCENES" lit={state.pad_mode === "scenes" ? "amber" : "off"}
-            title="DEVICE < : show the scene pads"
+          <HwButton label="LOOKS" lit={state.pad_mode === "scenes" ? "amber" : "off"}
+            title="DEVICE < : show the look pads"
             onPress={(v) => sender.note(1, APC40.deviceLeft, v)} />
           <HwButton label="SEQUENCES" lit={state.pad_mode === "sequences" ? "amber" : "off"}
             title="DEVICE > : show the sequence pads"
             onPress={(v) => sender.note(1, APC40.deviceRight, v)} />
           {positionStrip && <>
             <HwButton label="AIM" lit={state.position_mode === "aim" ? "amber" : "off"}
-              title="AIM: a pad moves the beam to that target/zone"
+              title="AIM: a pad moves the beam to that target/zone. While a Move FX runs, pads pick its route instead (blinking, numbered in order); Store current FX keeps it"
               onPress={(v) => sender.note(1, APC40.deviceOnOff, v)} />
             <HwButton label="PERMISSIONS" lit={state.position_mode === "permissions" ? "amber" : "off"}
               title="PERMISSIONS: a pad changes where the strip may move; nothing moves"
@@ -677,6 +702,8 @@ function SceneLaunchButton(props: {
 function TempoPanel(props: {
   bpm: number;
   beatOn: boolean;
+  quantize: boolean;
+  onQuantize: (velocity: number) => void;
   onTap: (velocity: number) => void;
   onSteps: (steps: number) => void;
   onBpm: (bpm: number) => void;
@@ -691,6 +718,9 @@ function TempoPanel(props: {
     <div className="apc-tempo">
       <span className={props.beatOn ? "apc-beat on" : "apc-beat"} title="METRONOME: backend-synchronised beat">BEAT</span>
       <HwButton className="apc-tap" label="TAP" lit="off" title="TAP TEMPO: tap on the beat" onPress={props.onTap} />
+      <HwButton className="apc-tap" label={props.quantize ? "QUANTIZE ON" : "QUANTIZE"} lit={props.quantize ? "amber" : "off"}
+        title="METRONOME = Quantize: looks, accents, sequence pads and NEXT fire on the next beat"
+        onPress={props.onQuantize} />
       <Knob
         {...noSelect}
         value={null}
@@ -734,8 +764,10 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
         "apc-pad",
         pad.included ? "included" : "",
         pad.active ? "active" : "",
-        pad.kind === "fx_colour" && pad.active ? "apc-blink" : "",
+        ((pad.kind === "fx_colour" || pad.kind === "fixture_colour") && pad.active) || pad.route_order != null
+          ? "apc-blink" : "",
         pad.missing ? "missing" : "",
+        pad.queued ? "apc-queued" : "",
         pressed ? "pressed" : "",
       ].join(" ")}
       style={{
@@ -743,9 +775,12 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
         gridRow: Math.floor(pad.pad / 8) + 1,
         ...(pad.colour ? { background: css(pad.colour), borderColor: css(pad.colour) } : {}),
       }}
-      aria-pressed={pad.kind === "zone" ? pad.included : pad.kind === "fx_colour" ? pad.active : undefined}
-      title={pad.kind === "zone"
-        ? `${pad.label}: ${pad.explicitly_excluded ? "explicitly excluded" : pad.included ? "included" : "not included"}. Use Aim/Permissions mode; SHIFT + press edits.`
+      aria-pressed={pad.kind === "zone" ? pad.included
+        : pad.kind === "fx_colour" || pad.kind === "fixture_colour" ? pad.active : undefined}
+      title={pad.route_order != null
+        ? `${pad.label}: stop ${pad.route_order} of the running Move FX route. Press again to remove it.`
+        : pad.kind === "zone"
+        ? `${pad.label}: ${pad.included ? "included" : "excluded"}. Use Aim/Permissions mode; SHIFT + press edits.`
         : pad.kind === "fx_colour" ? (pad.active ? `Remove palette colour ${pad.label}` : "Add colour to FX palette") : undefined}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -756,7 +791,7 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
       onPointerCancel={release}
       onLostPointerCapture={release}
     >
-      {(pad.included || pad.active) && (
+      {(pad.included || (pad.active && pad.kind !== "fixture_colour")) && (
         <span className="apc-pad-play">{pad.included ? "✓" : ""}{pad.active ? " ▶" : ""}</span>
       )}
       <span className="apc-pad-label">{pad.label ?? ""}</span>
@@ -769,6 +804,12 @@ function PadButton(props: { pad: Apc40Pad; onPress: (velocity: number) => void }
         {pad.fixture_badges.join(" · ")}
       </small>}
       {pad.explicitly_excluded && <span className="apc-pad-play">EXCLUDED</span>}
+      {pad.route_order != null && <span className="apc-pad-mode" title="Route order">{pad.route_order}</span>}
+      {pad.look && <span className="apc-pad-look" title="Look: recall also sets the FX of its strips">FX</span>}
+      {pad.accent && <span className="apc-pad-accent" title={pad.accent === "hold"
+        ? "Accent: plays the complete look while held, then everything returns"
+        : `Accent: plays the complete look for ${pad.accent_beats} beats, then everything returns`}>
+        {pad.accent === "hold" ? "HIT" : `HIT ${pad.accent_beats}`}</span>}
     </button>
   );
 }

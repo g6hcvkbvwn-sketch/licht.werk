@@ -59,15 +59,20 @@ def test_fx_led_blinks_outside_menu_and_editing_blinks_faster():
     assert rig.apc.leds()[key] != first
 
 
-def test_metronome_follows_backend_phase_and_tap():
+def test_metronome_toggles_quantize_and_then_follows_backend_phase_and_tap():
     rig = Rig()
     assert rig.tempo.bpm() == 128.0
     key = ("note", 1, hw.NOTE_METRONOME)
+    assert rig.apc.leds()[key] == hw.LED_OFF  # quantize off
+    rig.press(hw.NOTE_METRONOME)
+    assert rig.apc.quantizer.enabled()
     assert rig.apc.leds()[key] == hw.LED_ON
     rig.clock.now += 60 / 128 * 0.5
     assert rig.apc.leds()[key] == hw.LED_OFF
     rig.press(hw.NOTE_TAP_TEMPO)
     assert rig.apc.leds()[key] == hw.LED_ON
+    rig.press(hw.NOTE_METRONOME)
+    assert rig.apc.leds()[key] == hw.LED_OFF
 
 
 def test_only_left_device_columns_control_head_parameters():
@@ -127,12 +132,16 @@ def test_zone_pads_distinguish_included_selected_and_excluded(monkeypatch):
     assert colours[24] == 38  # permitted, not current aim
     assert colours[25] == 37  # current aim
     assert colours[26] == 6  # explicit exclusion, dim red
-    assert colours[27] == 1  # not included, dim neutral
+    assert colours[27] == 6  # omitted permissions are excluded too
     rig.effects.start("apc40:2", EffectType.CIRCLE, 0, ["moving-head-1"])
     colours = rig.apc.pad_colours()
-    assert colours[24] == colours[25] == 37
+    assert colours[24] == colours[25] == 38  # Aim mode during Move FX: bright = picked route stop
+    rig.press(hw.NOTE_DEVICE_LOCK)
+    colours = rig.apc.pad_colours()
+    assert colours[24] == colours[25] == 37  # Permissions mode shows the included zones
     assert colours[26] == 6
-    assert colours[27] == 1
+    assert colours[27] == 6
+    rig.press(hw.NOTE_DEVICE_ON_OFF)
     rig.effects.stop("apc40:2", EffectType.CIRCLE)
     assert rig.apc.pad_colours()[24] == 38
     assert rig.apc.pad_colours()[25] == 37
@@ -204,7 +213,7 @@ def test_zone_pad_presses_accumulate_areas_and_report_all_included(tmp_path, pre
         assert rig.room_file().strip_assignments["apc40:2"].include_zones == ["floor-area"]
         view = note(hw.pad_note(24))
         assert not view["pads"][24]["explicitly_excluded"]
-        assert not view["pads"][24]["included"]
+        assert view["pads"][24]["included"]
         note(hw.NOTE_SHIFT)
         view = note(hw.pad_note(25))
         note(hw.NOTE_SHIFT, 0)

@@ -16,8 +16,8 @@ export default function ScenePanel(props: Props) {
 
   return (
     <section className="scenes">
-      <h2>Scenes {props.transitionActive && <span className="fading">FADING…</span>}</h2>
-      {props.scenes.length === 0 && <p className="muted">No scenes saved yet.</p>}
+      <h2>Looks {props.transitionActive && <span className="fading">FADING…</span>}</h2>
+      {props.scenes.length === 0 && <p className="muted">No looks saved yet.</p>}
       <div className="scene-grid">
         {props.scenes.map((scene) => (
           <div
@@ -32,7 +32,7 @@ export default function ScenePanel(props: Props) {
               className="scene-delete"
               aria-label={`Delete ${scene.name}`}
               onClick={() => {
-                if (window.confirm(`Delete scene "${scene.name}"?`)) props.onDelete(scene.id);
+                if (window.confirm(`Delete look "${scene.name}"?`)) props.onDelete(scene.id);
               }}
             >
               ✕
@@ -51,7 +51,7 @@ export default function ScenePanel(props: Props) {
         }}
       >
         <input
-          placeholder="New scene name"
+          placeholder="New look name"
           maxLength={80}
           value={name}
           onChange={(e) => setName(e.target.value)}

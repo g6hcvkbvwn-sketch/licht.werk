@@ -97,7 +97,7 @@ export default function FixturePanel({ fixture, lockedAttributes = [], onChange,
   const picker = (title: string, prefix: string) => {
     const locked = COLOR_ATTRIBUTES.some((a) => lockedAttributes.includes(prefix + a));
     return <label key={prefix} className={locked ? "locked-field" : ""}>
-      {title}{locked ? " · LOCKED (scene / sequence)" : ""}
+      {title}{locked ? " · LOCKED (look / sequence)" : ""}
       <input type="color" disabled={!fixture.enabled || locked} value={toHex(values, prefix)}
         onChange={(e) => update(fromHex(e.target.value, prefix))} />
     </label>;

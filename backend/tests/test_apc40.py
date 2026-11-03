@@ -356,7 +356,7 @@ def test_scene_pads_recall_again_and_blink(rig) -> None:
     rig.press(hw.pad_note(1))  # missing scene: logged, nothing happens
     rig.press(hw.pad_note(2))  # unassigned
     assert rig.scenes.active_scene() == "red"
-    assert rig.apc.show_dialog_request() == (1, "scene", None, 2)
+    assert rig.apc.show_dialog_request() == (1, "scene", None, 2, False)
 
 
 def test_pad_store_validates_and_saves(tmp_path) -> None:

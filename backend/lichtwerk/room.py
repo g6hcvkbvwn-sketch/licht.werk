@@ -102,6 +102,19 @@ class RoomFile(BaseModel):
     assignments: dict[str, HeadAssignment] = Field(default_factory=dict)
     strip_assignments: dict[str, HeadAssignment] = Field(default_factory=dict)
 
+    def permissions(self, assignment: HeadAssignment) -> HeadAssignment:
+        included = [zone for zone in assignment.include_zones if zone not in assignment.exclude_zones]
+        excluded = list(dict.fromkeys([
+            *assignment.exclude_zones, *(zone.id for zone in self.zones if zone.id not in included),
+        ]))
+        return assignment.model_copy(update={"include_zones": included, "exclude_zones": excluded}, deep=True)
+
+    def with_zone_permissions(self) -> "RoomFile":
+        return self.model_copy(update={
+            "assignments": {head: self.permissions(value) for head, value in self.assignments.items()},
+            "strip_assignments": {owner: self.permissions(value) for owner, value in self.strip_assignments.items()},
+        }, deep=True)
+
     @property
     def size(self) -> Optional[RoomSize]:
         """Room size (x, y, z) once all three are measured, else None."""
@@ -162,6 +175,25 @@ def room_problems(document: RoomFile) -> list[str]:
     return problems
 
 
+def target_in_included_areas(
+    document: RoomFile, assignment: Optional[HeadAssignment], point: Point
+) -> bool:
+    """True if `point` lies in one of the head's included areas and in none of its excluded ones.
+
+    Target Tour hold patterns require this; stationary holds only need the target to be reachable.
+    """
+    size = document.size
+    if size is None or assignment is None:
+        return False
+    assignment = document.permissions(assignment)
+    zones = {zone.id: zone for zone in document.zones}
+    included = [zones[z] for z in assignment.include_zones if z in zones and z not in assignment.exclude_zones]
+    excluded = [zones[z] for z in assignment.exclude_zones if z in zones]
+    return any(zone.contains(point, size) for zone in included) and not any(
+        zone.contains(point, size) for zone in excluded
+    )
+
+
 def assignment_problems(document: RoomFile, patch: Patch) -> list[str]:
     heads = {f.patch.id for f in patch.fixtures if is_moving_head(f)}
     return [
@@ -209,7 +241,7 @@ class RigStore:
         self._room_path = room_path
         self._heads_path = heads_path
         self._lock = RLock()
-        self._room = room or RoomFile()
+        self._room = (room or RoomFile()).with_zone_permissions()
         self._heads = heads or HeadsFile()
         self._preview: Optional[RoomFile] = None
         self._context = local()
@@ -283,6 +315,7 @@ class RigStore:
             problems = room_problems(document) + assignment_problems(document, self._patch)
             if problems:
                 raise ValueError("Invalid room data: " + "; ".join(problems) + ".")
+            document = document.with_zone_permissions()
             if self._definition_validator is not None:
                 self._definition_validator(document)
             self._write(self._room_path, document)
@@ -292,7 +325,8 @@ class RigStore:
     def assignment(self, head_id: str, *, live: bool = False) -> HeadAssignment:
         self.head(head_id)
         with self._lock:
-            return self.room_file(live=live).assignments.get(head_id, HeadAssignment()).model_copy(deep=True)
+            document = self.room_file(live=live)
+            return document.permissions(document.assignments.get(head_id, HeadAssignment()))
 
     def set_position_settings(
         self, assignments: dict[str, HeadAssignment],
@@ -307,6 +341,7 @@ class RigStore:
             problems = room_problems(document)
             if problems:
                 raise ValueError("Invalid position settings: " + "; ".join(problems))
+            document = document.with_zone_permissions()
             if document == self.room_file():
                 return
             if self.editing_preview() and self._preview is not None:

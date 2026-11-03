@@ -1,842 +1,1396 @@
 {
   "scenes": [
     {
-      "id": "booth-standard",
       "name": "Booth Standard Blue 10%",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 1,
+      "fade_beats": 1.0,
       "groups": {
         "dj-spots": {
           "intensity": 0.1,
-          "red": 0,
-          "green": 0,
-          "blue": 1,
-          "white": 0,
-          "strobe": 0
-        }
-      }
-    },
-    {
-      "id": "deep-blue-floor",
-      "name": "Deep Blue Floor",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 2,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.28,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0.1
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0,
+          "strobe": 0.0
         }
       },
+      "fixtures": {},
+      "positions": {},
+      "fx": null,
+      "id": "booth-standard"
+    },
+    {
+      "name": "Deep Blue Floor",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 2.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.48,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
           "ring_red": 0.35,
-          "ring_green": 0,
+          "ring_green": 0.0,
           "ring_blue": 0.3
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.28,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.1
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "deep-blue-floor"
     },
     {
-      "id": "cyan-cross",
       "name": "Cyan Cross",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 2,
+      "fade_beats": 2.0,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.58,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.25,
+          "blue": 0.15,
+          "white": 0.0,
+          "speed": 1.0,
+          "ring_intensity": 0.3,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.1
+        }
+      },
       "fixtures": {
         "led-bar-1": {
           "intensity": 0.32,
-          "strobe": 0,
-          "red": 0,
+          "strobe": 0.0,
+          "red": 0.0,
           "green": 0.25,
           "blue": 0.15
         }
       },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-right-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "floor-left-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        }
+      },
+      "fx": null,
+      "id": "cyan-cross"
+    },
+    {
+      "name": "Magenta Cross",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 2.0,
       "groups": {
         "moving-heads": {
-          "intensity": 0.58,
-          "strobe": 0,
-          "red": 0,
-          "green": 0.25,
-          "blue": 0.15,
-          "white": 0,
-          "speed": 1,
+          "intensity": 0.55,
+          "strobe": 0.0,
+          "red": 0.35,
+          "green": 0.0,
+          "blue": 0.3,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
           "ring_blue": 0.1
         }
       },
-      "positions": {
-        "moving-head-1": {
-          "target_id": "floor-right-upper"
-        },
-        "moving-head-2": {
-          "target_id": "floor-left-upper"
-        }
-      }
-    },
-    {
-      "id": "magenta-cross",
-      "name": "Magenta Cross",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 2,
       "fixtures": {
         "led-bar-1": {
           "intensity": 0.3,
-          "strobe": 0,
+          "strobe": 0.0,
           "red": 0.35,
-          "green": 0,
+          "green": 0.0,
           "blue": 0.3
-        }
-      },
-      "groups": {
-        "moving-heads": {
-          "intensity": 0.55,
-          "strobe": 0,
-          "red": 0.35,
-          "green": 0,
-          "blue": 0.3,
-          "white": 0,
-          "speed": 1,
-          "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
-          "ring_blue": 0.1
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "floor-right-lower"
+          "target_id": "floor-right-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "floor-left-lower"
+          "target_id": "floor-left-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "magenta-cross"
     },
     {
-      "id": "red-pressure",
       "name": "Red Pressure",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 1,
+      "fade_beats": 1.0,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.72,
+          "strobe": 0.0,
+          "red": 0.45,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.0,
+          "speed": 1.0,
+          "ring_intensity": 0.3,
+          "ring_red": 0.45,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        }
+      },
       "fixtures": {
         "led-bar-1": {
           "intensity": 0.45,
-          "strobe": 0,
+          "strobe": 0.0,
           "red": 0.45,
-          "green": 0,
-          "blue": 0
-        }
-      },
-      "groups": {
-        "moving-heads": {
-          "intensity": 0.72,
-          "strobe": 0,
-          "red": 0.45,
-          "green": 0,
-          "blue": 0,
-          "white": 0,
-          "speed": 1,
-          "ring_intensity": 0.3,
-          "ring_red": 0.45,
-          "ring_green": 0,
-          "ring_blue": 0
+          "green": 0.0,
+          "blue": 0.0
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "red-pressure"
     },
     {
-      "id": "cold-white-hit",
       "name": "Cold White Hit",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
       "fade_beats": 0.5,
+      "groups": {
+        "moving-heads": {
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.8,
+          "speed": 1.0,
+          "ring_intensity": 0.3,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.1
+        }
+      },
       "fixtures": {
         "led-bar-1": {
           "intensity": 0.55,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1
-        }
-      },
-      "groups": {
-        "moving-heads": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
-          "white": 0.8,
-          "speed": 1,
-          "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
-          "ring_blue": 0.1
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "cold-white-hit"
     },
     {
-      "id": "floor-wide-blue",
       "name": "Floor Wide Blue",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 2,
+      "fade_beats": 2.0,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.62,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.1,
+          "white": 0.0,
+          "speed": 1.0,
+          "ring_intensity": 0.3,
+          "ring_red": 0.0,
+          "ring_green": 0.25,
+          "ring_blue": 0.15
+        }
+      },
       "fixtures": {
         "led-bar-1": {
           "intensity": 0.38,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1
-        }
-      },
-      "groups": {
-        "moving-heads": {
-          "intensity": 0.62,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0.1,
-          "white": 0,
-          "speed": 1,
-          "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0.25,
-          "ring_blue": 0.15
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "floor-left-upper"
+          "target_id": "floor-left-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "floor-right-upper"
-        }
-      }
-    },
-    {
-      "id": "floor-near-magenta",
-      "name": "Floor Near Magenta",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 2,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.35,
-          "strobe": 0,
-          "red": 0.35,
-          "green": 0,
-          "blue": 0.3
+          "target_id": "floor-right-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
       },
+      "fx": null,
+      "id": "floor-wide-blue"
+    },
+    {
+      "name": "Floor Near Magenta",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 2.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.6,
-          "strobe": 0,
+          "strobe": 0.0,
           "red": 0.35,
-          "green": 0,
+          "green": 0.0,
           "blue": 0.3,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
           "ring_red": 0.35,
-          "ring_green": 0,
+          "ring_green": 0.0,
           "ring_blue": 0.3
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.35,
+          "strobe": 0.0,
+          "red": 0.35,
+          "green": 0.0,
+          "blue": 0.3
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "floor-left-lower"
+          "target_id": "floor-left-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "floor-right-lower"
+          "target_id": "floor-right-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "floor-near-magenta"
     },
     {
-      "id": "opposite-diagonal",
       "name": "Opposite Diagonal",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 2,
+      "fade_beats": 2.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.58,
-          "strobe": 0,
-          "red": 0,
+          "strobe": 0.0,
+          "red": 0.0,
           "green": 0.25,
           "blue": 0.15,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
           "ring_red": 0.35,
-          "ring_green": 0,
+          "ring_green": 0.0,
           "ring_blue": 0.3
         }
       },
+      "fixtures": {},
       "positions": {
         "moving-head-1": {
-          "target_id": "floor-right-upper"
+          "target_id": "floor-right-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "floor-left-lower"
-        }
-      }
-    },
-    {
-      "id": "disco-ball-blue",
-      "name": "Disco Ball Blue",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 4,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.18,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0.1
+          "target_id": "floor-left-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
       },
+      "fx": null,
+      "id": "opposite-diagonal"
+    },
+    {
+      "name": "Disco Ball Blue",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 4.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.5,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
           "ring_blue": 0.1
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.18,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.1
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "disco-ball-high"
+          "target_id": "disco-ball-high",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "disco-ball-high"
+          "target_id": "disco-ball-high",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "disco-ball-blue"
     },
     {
-      "id": "disco-ball-white",
       "name": "Disco Ball White",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 2,
+      "fade_beats": 2.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.72,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
           "white": 0.8,
-          "speed": 1,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
           "ring_blue": 0.1
         }
       },
+      "fixtures": {},
       "positions": {
         "moving-head-1": {
-          "target_id": "disco-ball-rotating"
+          "target_id": "disco-ball-rotating",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "disco-ball-rotating"
+          "target_id": "disco-ball-rotating",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "disco-ball-white"
     },
     {
-      "id": "split-balls",
       "name": "Split Disco Balls",
-      "fade_seconds": 0,
+      "fade_seconds": 0.0,
       "fade_timing": "beats",
-      "fade_beats": 4,
+      "fade_beats": 4.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.5,
-          "strobe": 0,
-          "red": 0,
+          "strobe": 0.0,
+          "red": 0.0,
           "green": 0.25,
           "blue": 0.15,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
           "ring_red": 0.35,
-          "ring_green": 0,
+          "ring_green": 0.0,
           "ring_blue": 0.3
         }
       },
+      "fixtures": {},
       "positions": {
         "moving-head-1": {
-          "target_id": "disco-ball-low"
+          "target_id": "disco-ball-low",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "disco-ball-high"
-        }
-      }
-    },
-    {
-      "id": "ambient-purple",
-      "name": "Ambient Purple",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 4,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.18,
-          "strobe": 0,
-          "red": 0.35,
-          "green": 0,
-          "blue": 0.3
+          "target_id": "disco-ball-high",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
       },
+      "fx": null,
+      "id": "split-balls"
+    },
+    {
+      "name": "Ambient Purple",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 4.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.25,
-          "strobe": 0,
+          "strobe": 0.0,
           "red": 0.35,
-          "green": 0,
+          "green": 0.0,
           "blue": 0.3,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
           "ring_blue": 0.1
         }
       },
-      "positions": {
-        "moving-head-1": {
-          "target_id": "floor-left-upper"
-        },
-        "moving-head-2": {
-          "target_id": "floor-right-upper"
-        }
-      }
-    },
-    {
-      "id": "ambient-blue",
-      "name": "Ambient Blue",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 4,
       "fixtures": {
         "led-bar-1": {
           "intensity": 0.18,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0.1
-        }
-      },
-      "groups": {
-        "moving-heads": {
-          "intensity": 0.28,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0.1,
-          "white": 0,
-          "speed": 1,
-          "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0.25,
-          "ring_blue": 0.15
+          "strobe": 0.0,
+          "red": 0.35,
+          "green": 0.0,
+          "blue": 0.3
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "dance-floor-center"
+          "target_id": "floor-left-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "dance-floor-center"
-        }
-      }
-    },
-    {
-      "id": "dark-rings",
-      "name": "Dark Rings",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 2,
-      "groups": {
-        "moving-heads": {
-          "intensity": 0,
-          "ring_intensity": 0.32,
-          "ring_red": 0.2,
-          "ring_green": 0,
-          "ring_blue": 0.35
-        }
-      }
-    },
-    {
-      "id": "beam-blackout",
-      "name": "Beam Blackout",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0.5,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0
+          "target_id": "floor-right-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
       },
+      "fx": null,
+      "id": "ambient-purple"
+    },
+    {
+      "name": "Ambient Blue",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 4.0,
       "groups": {
         "moving-heads": {
-          "intensity": 0
-        }
-      }
-    },
-    {
-      "id": "booth-drop-blue",
-      "name": "Booth Drop Blue",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0.5,
-      "groups": {
-        "dj-spots": {
-          "intensity": 0.65,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "intensity": 0.28,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1,
-          "white": 0
+          "white": 0.0,
+          "speed": 1.0,
+          "ring_intensity": 0.3,
+          "ring_red": 0.0,
+          "ring_green": 0.25,
+          "ring_blue": 0.15
         }
-      }
-    },
-    {
-      "id": "booth-drop-white",
-      "name": "Booth Drop White",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0.5,
-      "groups": {
-        "dj-spots": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
-          "white": 0.8
-        }
-      }
-    },
-    {
-      "id": "full-blue",
-      "name": "Full Blue",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 1,
+      },
       "fixtures": {
         "led-bar-1": {
-          "intensity": 0.65,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "intensity": 0.18,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1
         }
       },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        }
+      },
+      "fx": null,
+      "id": "ambient-blue"
+    },
+    {
+      "name": "Dark Rings",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 2.0,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.0,
+          "ring_intensity": 0.32,
+          "ring_red": 0.2,
+          "ring_green": 0.0,
+          "ring_blue": 0.35
+        }
+      },
+      "fixtures": {},
+      "positions": {},
+      "fx": null,
+      "id": "dark-rings"
+    },
+    {
+      "name": "Beam Blackout",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "groups": {
+        "moving-heads": {
+          "intensity": 0.0
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.0
+        }
+      },
+      "positions": {},
+      "fx": null,
+      "id": "beam-blackout"
+    },
+    {
+      "name": "Booth Drop Blue",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "groups": {
+        "dj-spots": {
+          "intensity": 0.65,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.1,
+          "white": 0.0
+        }
+      },
+      "fixtures": {},
+      "positions": {},
+      "fx": null,
+      "id": "booth-drop-blue"
+    },
+    {
+      "name": "Booth Drop White",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.5,
+      "groups": {
+        "dj-spots": {
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.8
+        }
+      },
+      "fixtures": {},
+      "positions": {},
+      "fx": null,
+      "id": "booth-drop-white"
+    },
+    {
+      "name": "Full Blue",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 1.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.85,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
+          "ring_red": 0.0,
           "ring_green": 0.25,
           "ring_blue": 0.15
         },
         "dj-spots": {
           "intensity": 0.35,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1,
-          "white": 0
+          "white": 0.0
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.65,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.1
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "floor-left-upper"
+          "target_id": "floor-left-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "floor-right-upper"
-        }
-      }
-    },
-    {
-      "id": "full-magenta",
-      "name": "Full Magenta",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 1,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.62,
-          "strobe": 0,
-          "red": 0.35,
-          "green": 0,
-          "blue": 0.3
+          "target_id": "floor-right-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
       },
+      "fx": null,
+      "id": "full-blue"
+    },
+    {
+      "name": "Full Magenta",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 1.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.82,
-          "strobe": 0,
+          "strobe": 0.0,
           "red": 0.35,
-          "green": 0,
+          "green": 0.0,
           "blue": 0.3,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
           "ring_blue": 0.1
         },
         "dj-spots": {
           "intensity": 0.35,
-          "strobe": 0,
+          "strobe": 0.0,
           "red": 0.35,
-          "green": 0,
+          "green": 0.0,
           "blue": 0.3,
-          "white": 0
+          "white": 0.0
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.62,
+          "strobe": 0.0,
+          "red": 0.35,
+          "green": 0.0,
+          "blue": 0.3
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "floor-left-lower"
+          "target_id": "floor-left-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "floor-right-lower"
-        }
-      }
-    },
-    {
-      "id": "drop-white",
-      "name": "Drop White",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0.1
+          "target_id": "floor-right-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
       },
+      "fx": null,
+      "id": "full-magenta"
+    },
+    {
+      "name": "Drop White",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.0,
       "groups": {
         "moving-heads": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
           "white": 0.8,
-          "speed": 1,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
-          "ring_blue": 0
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
         },
         "dj-spots": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
           "white": 0.8
         }
       },
-      "positions": {
-        "moving-head-1": {
-          "target_id": "dance-floor-center"
-        },
-        "moving-head-2": {
-          "target_id": "dance-floor-center"
-        }
-      }
-    },
-    {
-      "id": "drop-red",
-      "name": "Drop Red",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0,
       "fixtures": {
         "led-bar-1": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0.45,
-          "green": 0,
-          "blue": 0
-        }
-      },
-      "groups": {
-        "moving-heads": {
-          "intensity": 1,
-          "strobe": 0,
-          "red": 0.45,
-          "green": 0,
-          "blue": 0,
-          "white": 0,
-          "speed": 1,
-          "ring_intensity": 0.3,
-          "ring_red": 0.45,
-          "ring_green": 0,
-          "ring_blue": 0
-        },
-        "dj-spots": {
-          "intensity": 0.8,
-          "strobe": 0,
-          "red": 0.45,
-          "green": 0,
-          "blue": 0,
-          "white": 0
-        }
-      },
-      "positions": {
-        "moving-head-1": {
-          "target_id": "floor-left-lower"
-        },
-        "moving-head-2": {
-          "target_id": "floor-right-lower"
-        }
-      }
-    },
-    {
-      "id": "strobe-blue",
-      "name": "Strobe Blue",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0,
-      "fixtures": {
-        "led-bar-1": {
-          "intensity": 0.85,
-          "strobe": 0.48,
-          "red": 0,
-          "green": 0,
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1
         }
       },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        }
+      },
+      "fx": null,
+      "id": "drop-white"
+    },
+    {
+      "name": "Drop Red",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.0,
+      "groups": {
+        "moving-heads": {
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.45,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.0,
+          "speed": 1.0,
+          "ring_intensity": 0.3,
+          "ring_red": 0.45,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "dj-spots": {
+          "intensity": 0.8,
+          "strobe": 0.0,
+          "red": 0.45,
+          "green": 0.0,
+          "blue": 0.0,
+          "white": 0.0
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 1.0,
+          "strobe": 0.0,
+          "red": 0.45,
+          "green": 0.0,
+          "blue": 0.0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "floor-right-lower",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        }
+      },
+      "fx": null,
+      "id": "drop-red"
+    },
+    {
+      "name": "Strobe Blue",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.0,
       "groups": {
         "moving-heads": {
           "intensity": 0.9,
           "strobe": 0.42,
-          "red": 0,
-          "green": 0,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1,
-          "white": 0,
-          "speed": 1,
+          "white": 0.0,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
           "ring_blue": 0.1
         }
       },
-      "positions": {
-        "moving-head-1": {
-          "target_id": "dance-floor-center"
-        },
-        "moving-head-2": {
-          "target_id": "dance-floor-center"
-        }
-      }
-    },
-    {
-      "id": "strobe-white-full",
-      "name": "Strobe White Full",
-      "fade_seconds": 0,
-      "fade_timing": "beats",
-      "fade_beats": 0,
       "fixtures": {
         "led-bar-1": {
-          "intensity": 1,
-          "strobe": 0.68,
-          "red": 0,
-          "green": 0,
+          "intensity": 0.85,
+          "strobe": 0.48,
+          "red": 0.0,
+          "green": 0.0,
           "blue": 0.1
         }
       },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        },
+        "moving-head-2": {
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
+        }
+      },
+      "fx": null,
+      "id": "strobe-blue"
+    },
+    {
+      "name": "Strobe White Full",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 0.0,
       "groups": {
         "moving-heads": {
-          "intensity": 1,
+          "intensity": 1.0,
           "strobe": 0.62,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
           "white": 0.8,
-          "speed": 1,
+          "speed": 1.0,
           "ring_intensity": 0.3,
-          "ring_red": 0,
-          "ring_green": 0,
-          "ring_blue": 0
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
         },
         "dj-spots": {
-          "intensity": 1,
+          "intensity": 1.0,
           "strobe": 0.55,
-          "red": 0,
-          "green": 0,
-          "blue": 0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.0,
           "white": 0.8
+        }
+      },
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 1.0,
+          "strobe": 0.68,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 0.1
         }
       },
       "positions": {
         "moving-head-1": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         },
         "moving-head-2": {
-          "target_id": "dance-floor-center"
+          "target_id": "dance-floor-center",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [],
+          "excluded_zone_ids": []
         }
-      }
+      },
+      "fx": null,
+      "id": "strobe-white-full"
+    },
+    {
+      "name": "Test Look",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 1.0,
+      "groups": {},
+      "fixtures": {
+        "led-bar-1": {
+          "intensity": 0.6141732283464567,
+          "strobe": 0.0,
+          "red": 1.0,
+          "green": 0.0,
+          "blue": 0.0
+        },
+        "moving-head-1": {
+          "intensity": 1.0,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0,
+          "ring_intensity": 0.0,
+          "ring_strobe": 0.0,
+          "ring_1_red": 0.0,
+          "ring_1_green": 0.0,
+          "ring_1_blue": 0.0,
+          "ring_2_red": 0.0,
+          "ring_2_green": 0.0,
+          "ring_2_blue": 0.0,
+          "ring_3_red": 0.0,
+          "ring_3_green": 0.0,
+          "ring_3_blue": 0.0,
+          "ring_4_red": 0.0,
+          "ring_4_green": 0.0,
+          "ring_4_blue": 0.0,
+          "ring_5_red": 0.0,
+          "ring_5_green": 0.0,
+          "ring_5_blue": 0.0,
+          "ring_6_red": 0.0,
+          "ring_6_green": 0.0,
+          "ring_6_blue": 0.0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "moving-head-2": {
+          "intensity": 1.0,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0,
+          "ring_intensity": 0.0,
+          "ring_strobe": 0.0,
+          "ring_1_red": 0.0,
+          "ring_1_green": 0.0,
+          "ring_1_blue": 0.0,
+          "ring_2_red": 0.0,
+          "ring_2_green": 0.0,
+          "ring_2_blue": 0.0,
+          "ring_3_red": 0.0,
+          "ring_3_green": 0.0,
+          "ring_3_blue": 0.0,
+          "ring_4_red": 0.0,
+          "ring_4_green": 0.0,
+          "ring_4_blue": 0.0,
+          "ring_5_red": 0.0,
+          "ring_5_green": 0.0,
+          "ring_5_blue": 0.0,
+          "ring_6_red": 0.0,
+          "ring_6_green": 0.0,
+          "ring_6_blue": 0.0,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "dj-spot-1": {
+          "intensity": 0.7559055118110236,
+          "strobe": 0.0,
+          "red": 1.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0
+        },
+        "dj-spot-2": {
+          "intensity": 0.7559055118110236,
+          "strobe": 0.0,
+          "red": 1.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0
+        }
+      },
+      "positions": {
+        "moving-head-1": {
+          "target_id": "floor-left-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [
+            "dancfloor",
+            "absorber-booth-rechts",
+            "absorber-booth-links"
+          ],
+          "excluded_zone_ids": [
+            "absorber-ru-ckwand-rechts-neben-tu-r",
+            "absorber-ru-ckwand-links-neben-tu-r",
+            "absorber-linke-wand",
+            "dj-booth"
+          ]
+        },
+        "moving-head-2": {
+          "target_id": "floor-left-upper",
+          "zone_id": null,
+          "spot": null,
+          "included_zone_ids": [
+            "dancfloor",
+            "absorber-booth-rechts",
+            "absorber-booth-links"
+          ],
+          "excluded_zone_ids": [
+            "absorber-ru-ckwand-rechts-neben-tu-r",
+            "absorber-ru-ckwand-links-neben-tu-r",
+            "absorber-linke-wand",
+            "dj-booth"
+          ]
+        }
+      },
+      "fx": null,
+      "id": "test-look"
+    },
+    {
+      "name": "Test Booth",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 1.0,
+      "groups": {},
+      "fixtures": {
+        "dj-spot-1": {
+          "intensity": 0.5511811023622047,
+          "red": 0.0,
+          "green": 1.0,
+          "blue": 0.0,
+          "white": 0.0,
+          "strobe": 0.0
+        },
+        "dj-spot-2": {
+          "strobe": 0.0,
+          "red": 1.0,
+          "green": 0.0,
+          "blue": 1.0,
+          "white": 0.0,
+          "intensity": 0.31496062992125984
+        }
+      },
+      "positions": {},
+      "fx": {
+        "modes": {
+          "spots": "single"
+        },
+        "strips": []
+      },
+      "id": "test-booth"
+    },
+    {
+      "name": "Move Test",
+      "fade_seconds": 0.0,
+      "fade_timing": "beats",
+      "fade_beats": 1.0,
+      "groups": {},
+      "fixtures": {
+        "moving-head-1": {
+          "intensity": 0.55,
+          "pan": 0.10281272042152238,
+          "tilt": 0.33554380946730544,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.35,
+          "green": 0.0,
+          "blue": 0.3,
+          "white": 0.0,
+          "ring_intensity": 0.3,
+          "ring_strobe": 0.0,
+          "ring_1_red": 0.0,
+          "ring_1_green": 0.0,
+          "ring_1_blue": 0.1,
+          "ring_2_red": 0.0,
+          "ring_2_green": 0.0,
+          "ring_2_blue": 0.1,
+          "ring_3_red": 0.0,
+          "ring_3_green": 0.0,
+          "ring_3_blue": 0.1,
+          "ring_4_red": 0.0,
+          "ring_4_green": 0.0,
+          "ring_4_blue": 0.1,
+          "ring_5_red": 0.0,
+          "ring_5_green": 0.0,
+          "ring_5_blue": 0.1,
+          "ring_6_red": 0.0,
+          "ring_6_green": 0.0,
+          "ring_6_blue": 0.1,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        },
+        "moving-head-2": {
+          "intensity": 0.55,
+          "pan": 0.2243992764262985,
+          "tilt": 0.6813242127546145,
+          "speed": 1.0,
+          "strobe": 0.0,
+          "red": 0.35,
+          "green": 0.0,
+          "blue": 0.3,
+          "white": 0.0,
+          "ring_intensity": 0.3,
+          "ring_strobe": 0.0,
+          "ring_1_red": 0.0,
+          "ring_1_green": 0.0,
+          "ring_1_blue": 0.1,
+          "ring_2_red": 0.0,
+          "ring_2_green": 0.0,
+          "ring_2_blue": 0.1,
+          "ring_3_red": 0.0,
+          "ring_3_green": 0.0,
+          "ring_3_blue": 0.1,
+          "ring_4_red": 0.0,
+          "ring_4_green": 0.0,
+          "ring_4_blue": 0.1,
+          "ring_5_red": 0.0,
+          "ring_5_green": 0.0,
+          "ring_5_blue": 0.1,
+          "ring_6_red": 0.0,
+          "ring_6_green": 0.0,
+          "ring_6_blue": 0.1,
+          "ring_red": 0.0,
+          "ring_green": 0.0,
+          "ring_blue": 0.0
+        }
+      },
+      "positions": {},
+      "fx": {
+        "modes": {
+          "heads": "group",
+          "spots": "group"
+        },
+        "strips": [
+          {
+            "strip": "led-bar-1",
+            "component": "beam",
+            "preset": 1,
+            "combo": null,
+            "effects": [
+              {
+                "name": "Chase",
+                "kind": "chase",
+                "params": {
+                  "beats": 1.0,
+                  "size": 1.0,
+                  "spread": 1.0,
+                  "softness": 0.0,
+                  "timing": "beats",
+                  "seconds": 4.0,
+                  "shape": "legacy",
+                  "maximum": 1.0,
+                  "selection": "all",
+                  "order": [],
+                  "reverse": false,
+                  "mirror": "none",
+                  "mirror_alternate": true,
+                  "colour_mode": "base",
+                  "palette": [
+                    "#0000ff",
+                    "#ff00ff"
+                  ],
+                  "transition": "smooth",
+                  "target_ids": [],
+                  "zone_ids": [],
+                  "travel": 4.0,
+                  "hold": 4.0,
+                  "pattern": "current"
+                }
+              }
+            ]
+          },
+          {
+            "strip": "moving-heads",
+            "component": "beam",
+            "preset": 2,
+            "combo": null,
+            "effects": [
+              {
+                "name": "Medium figure 8",
+                "kind": "figure8",
+                "params": {
+                  "beats": 4.0,
+                  "size": 0.6,
+                  "spread": 0.0,
+                  "softness": 0.0,
+                  "timing": "beats",
+                  "seconds": 4.0,
+                  "shape": "legacy",
+                  "maximum": 1.0,
+                  "selection": "all",
+                  "order": [],
+                  "reverse": false,
+                  "mirror": "none",
+                  "mirror_alternate": true,
+                  "colour_mode": "base",
+                  "palette": [
+                    "#0000ff",
+                    "#ff00ff"
+                  ],
+                  "transition": "smooth",
+                  "target_ids": [],
+                  "zone_ids": [],
+                  "travel": 4.0,
+                  "hold": 4.0,
+                  "pattern": "current"
+                }
+              }
+            ]
+          },
+          {
+            "strip": "dj-spots",
+            "component": "beam",
+            "preset": 2,
+            "combo": null,
+            "effects": [
+              {
+                "name": "Opposite",
+                "kind": "two_colour",
+                "params": {
+                  "beats": 2.0,
+                  "size": 1.0,
+                  "spread": 1.0,
+                  "softness": 0.0,
+                  "timing": "beats",
+                  "seconds": 4.0,
+                  "shape": "legacy",
+                  "maximum": 1.0,
+                  "selection": "all",
+                  "order": [],
+                  "reverse": false,
+                  "mirror": "none",
+                  "mirror_alternate": true,
+                  "colour_mode": "base",
+                  "palette": [
+                    "#0000ff",
+                    "#ff00ff"
+                  ],
+                  "transition": "smooth",
+                  "target_ids": [],
+                  "zone_ids": [],
+                  "travel": 4.0,
+                  "hold": 4.0,
+                  "pattern": "current"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "id": "move-test"
     }
   ]
 }
